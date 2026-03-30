@@ -3,6 +3,9 @@ from pathlib import Path
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
+APP_VERSION = "0.0.1"
+GITHUB_REPO = "LuisFP0205/Nucleos"
+
 
 def _find_env_file() -> Path:
     """

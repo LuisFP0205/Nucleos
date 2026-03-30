@@ -474,6 +474,35 @@ async def guide_page():
     return FileResponse(str(_ASSETS / "static" / "guide.html"))
 
 
+@app.get("/api/version", include_in_schema=False)
+async def api_version():
+    """Retorna versão atual e verifica se há update disponível no GitHub."""
+    from config import APP_VERSION, GITHUB_REPO
+    import httpx
+    result = {"current": APP_VERSION, "latest": APP_VERSION, "update_available": False, "download_url": ""}
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest",
+                headers={"Accept": "application/vnd.github+json"},
+                timeout=5,
+            )
+        if r.status_code == 200:
+            data = r.json()
+            latest = data.get("tag_name", APP_VERSION).lstrip("v")
+            download_url = data.get("html_url", "")
+            # Pega o link do installer se disponível
+            for asset in data.get("assets", []):
+                if asset["name"].endswith(".exe"):
+                    download_url = asset["browser_download_url"]
+                    break
+            update_available = tuple(int(x) for x in latest.split(".")) > tuple(int(x) for x in APP_VERSION.split("."))
+            result.update({"latest": latest, "update_available": update_available, "download_url": download_url})
+    except Exception:
+        pass
+    return JSONResponse(result)
+
+
 @app.get("/logs", include_in_schema=False)
 async def logs_page():
     return FileResponse(str(_ASSETS / "static" / "logs.html"))

@@ -202,6 +202,16 @@
     .sb-uplan  { font-size: 10px; color: var(--muted); margin-top: 1px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .5px; }
     .sb-uplan.premium { color: var(--purple); }
 
+    /* ── Update banner ── */
+    .sb-update {
+      display: none; margin: 8px 10px; padding: 8px 10px;
+      background: rgba(234,179,8,.08); border: 1px solid rgba(234,179,8,.25);
+      border-radius: 8px; cursor: pointer; transition: background .15s;
+    }
+    .sb-update:hover { background: rgba(234,179,8,.14); }
+    .sb-update-title { font-size: 11px; font-weight: 700; color: #eab308; margin-bottom: 2px; }
+    .sb-update-sub   { font-size: 10.5px; color: var(--muted); }
+
     /* ── Global shared styles ── */
     .page-wrap {
       min-height: 100vh; display: flex; flex-direction: column;
@@ -474,6 +484,10 @@
           <span class="sb-obs-chevron" id="sb-obs-chevron">▲</span>
         </div>
       </div>
+      <div class="sb-update" id="sb-update" onclick="window.open(document.getElementById('sb-update').dataset.url,'_blank')">
+        <div class="sb-update-title">⬆ Nova versão disponível</div>
+        <div class="sb-update-sub" id="sb-update-sub">Clique para baixar</div>
+      </div>
       <div class="sb-user" id="sb-user">
         <div class="sb-avatar" id="sb-avatar">?</div>
         <div class="sb-uinfo" onclick="location.href='/settings'" style="cursor:pointer;flex:1;overflow:hidden">
@@ -575,6 +589,21 @@
       const r = await fetch("/auth/me");
       if (r.ok) { const u = await r.json(); if (u.email) _setUser(u.email, u.plan_type); }
     } catch (_) {}
+  }
+
+  async function _checkUpdate() {
+    try {
+      const r = await fetch("/api/version");
+      if (!r.ok) return;
+      const d = await r.json();
+      if (!d.update_available) return;
+      const el = document.getElementById("sb-update");
+      const sub = document.getElementById("sb-update-sub");
+      if (!el) return;
+      el.dataset.url = d.download_url || "https://github.com/LuisFP0205/Nucleos/releases/latest";
+      if (sub) sub.textContent = `v${d.current} → v${d.latest} · Clique para baixar`;
+      el.style.display = "block";
+    } catch(_) {}
   }
 
   window.NucleusLogout = async (e) => {
@@ -725,6 +754,7 @@
     loadUser();
     loadOBSScene();
     _syncChannelsFromSupabase();
+    _checkUpdate();
 
     // OBS popup toggle
     document.getElementById("sb-obs-row").addEventListener("click", () => {
