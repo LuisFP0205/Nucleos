@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Viewers Overlay</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Bungee&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    user-select: none;
+  }
+
+  /* ── Componentes ── */
+  .platform-row {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,0.55);
+    border-radius: 10px;
+    padding: 7px 12px 7px 10px;
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: opacity 0.4s, transform 0.4s;
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .platform-row.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .platform-row.hidden-row {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .platform-icon { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: blink 2s infinite;
+  }
+  .row-tw   .dot { background: #9147ff; box-shadow: 0 0 6px #9147ff; }
+  .row-yt   .dot { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+  .row-kick .dot { background: #53fc18; box-shadow: 0 0 6px #53fc18; }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  .viewer-count {
+    font-size: 15px; font-weight: 800;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    line-height: 1; white-space: nowrap;
+  }
+  .row-tw   .viewer-count { color: #c4a0ff; }
+  .row-yt   .viewer-count { color: #f87171; }
+  .row-kick .viewer-count { color: #a8ff7a; }
+
+  .viewer-label {
+    font-size: 9px; font-weight: 400;
+    color: rgba(255,255,255,.55);
+    text-transform: uppercase; letter-spacing: .06em;
+    line-height: 1; align-self: flex-end; margin-bottom: 1px;
+  }
+
+  /* ── Modo edição ── */
+  body.edit-mode { background: rgba(0,0,0,0.25); }
+
+  body.edit-mode .platform-row {
+    border: 1.5px dashed rgba(255,255,255,0.5) !important;
+    cursor: grab;
+  }
+
+  body.edit-mode .platform-row.dragging { cursor: grabbing; opacity: 0.8 !important; }
+
+  body.edit-mode .platform-row.hidden-row {
+    opacity: 0.3 !important;
+    pointer-events: auto !important;
+    border-color: rgba(255,255,255,0.2) !important;
+  }
+
+  /* ── Painel de edição ── */
+  #edit-panel {
+    display: none;
+    position: fixed;
+    bottom: 16px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15,15,20,0.92);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 10px 16px;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    z-index: 9999;
+    min-width: 320px;
+  }
+
+  body.edit-mode #edit-panel { display: flex; }
+
+  #edit-panel span {
+    font-size: 11px; color: rgba(255,255,255,0.5);
+    width: 100%; text-align: center; margin-bottom: 2px;
+  }
+
+  .ep-btn {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff; border-radius: 7px;
+    padding: 5px 10px; font-size: 11px;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .ep-btn:hover { background: rgba(255,255,255,0.18); }
+  .ep-btn.active { background: rgba(145,71,255,0.4); border-color: #9147ff; }
+
+  .ep-separator {
+    width: 1px; height: 22px;
+    background: rgba(255,255,255,0.15);
+    margin: 0 2px;
+  }
+
+  .ep-done {
+    background: rgba(145,71,255,0.5);
+    border-color: #9147ff;
+    font-weight: 600;
+  }
+  .ep-done:hover { background: rgba(145,71,255,0.75); }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: TWITCH — mais saturado, cores de plataforma
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-twitch .platform-row {
+    background: rgba(18, 8, 36, 0.90);
+    border-color: rgba(145,71,255,0.25);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  }
+  body.theme-twitch .row-tw   .viewer-count { color: #bf8bff; }
+  body.theme-twitch .row-yt   .viewer-count { color: #ff6b6b; }
+  body.theme-twitch .row-kick .viewer-count { color: #53fc18; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: NEON — contadores com glow
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-neon .platform-row {
+    background: rgba(0, 0, 0, 0.85);
+    border-color: rgba(0,200,224,0.25);
+    box-shadow: 0 0 12px rgba(0,200,224,0.1);
+  }
+  body.theme-neon .row-tw   .viewer-count { color: #bf8bff; text-shadow: 0 0 10px #9147ff; }
+  body.theme-neon .row-yt   .viewer-count { color: #ff6b6b; text-shadow: 0 0 10px #ff0000; }
+  body.theme-neon .row-kick .viewer-count { color: #53fc18; text-shadow: 0 0 10px #00e701; }
+  body.theme-neon .dot { box-shadow: none !important; }
+  body.theme-neon .row-tw   .dot { box-shadow: 0 0 8px #9147ff !important; }
+  body.theme-neon .row-yt   .dot { box-shadow: 0 0 8px #ef4444 !important; }
+  body.theme-neon .row-kick .dot { box-shadow: 0 0 8px #53fc18 !important; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: LIGHT — fundo claro
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-light .platform-row {
+    background: rgba(255, 255, 255, 0.88);
+    border-color: rgba(0,0,0,0.1);
+    backdrop-filter: blur(6px);
+  }
+  body.theme-light .row-tw   .viewer-count { color: #7c3aed; }
+  body.theme-light .row-yt   .viewer-count { color: #dc2626; }
+  body.theme-light .row-kick .viewer-count { color: #15803d; }
+  body.theme-light .viewer-label { color: rgba(0,0,0,0.4); }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: BOXSIDE — sem fundo, só ícone + número
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-boxside .platform-row {
+    background: transparent;
+    border: none;
+    border-left: 3px solid rgba(255,255,255,0.3);
+    border-radius: 0;
+    padding: 4px 10px;
+    backdrop-filter: none;
+  }
+  body.theme-boxside .row-tw   { border-left-color: #9147ff; }
+  body.theme-boxside .row-yt   { border-left-color: #ff0000; }
+  body.theme-boxside .row-kick { border-left-color: #00e701; }
+  body.theme-boxside .dot { display: none; }
+  body.theme-boxside .viewer-count { font-size: 16px; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: RADIO 80s — synthwave, magenta + laranja
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-retro80 .platform-row {
+    background: rgba(15, 0, 22, 0.90);
+    border: 1px solid #ff1a8c;
+    border-radius: 3px;
+    box-shadow: 0 0 10px rgba(255,26,140,0.18), inset 0 0 14px rgba(255,26,140,0.04);
+  }
+  body.theme-retro80 .dot                  { background: #ff1a8c !important; box-shadow: 0 0 7px #ff1a8c !important; }
+  body.theme-retro80 .row-yt   .dot        { background: #ff6600 !important; box-shadow: 0 0 7px #ff6600 !important; }
+  body.theme-retro80 .row-kick .dot        { background: #ffe100 !important; box-shadow: 0 0 7px #ffe100 !important; }
+  body.theme-retro80 .platform-name        { color: #ff8cc8; font-size: 11px; font-weight: 700; }
+  body.theme-retro80 .viewer-count {
+    font-family: 'Bungee', sans-serif;
+    font-size: 18px;
+    background: linear-gradient(90deg, #ff1a8c, #ff8c00);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  body.theme-retro80 .viewer-label { color: rgba(255,140,200,0.4); }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: RETRO — terminal CRT fósforo verde
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-retro::after {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px,
+      transparent 1px, transparent 3px
+    );
+  }
+  body.theme-retro .platform-row {
+    background: rgba(0, 12, 0, 0.88);
+    border: 1px solid #00ff41;
+    border-radius: 0;
+    box-shadow: 0 0 6px rgba(0,255,65,0.15), inset 0 0 10px rgba(0,255,65,0.04);
+  }
+  body.theme-retro .dot { background: #00ff41 !important; box-shadow: 0 0 6px #00ff41 !important; }
+  body.theme-retro .platform-name {
+    color: #4dff80;
+    font-family: 'VT323', monospace;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  body.theme-retro .viewer-count {
+    color: #00ff41;
+    font-family: 'VT323', monospace;
+    font-size: 26px;
+    text-shadow: 0 0 8px rgba(0,255,65,0.7);
+  }
+  body.theme-retro .viewer-label {
+    color: rgba(0,255,65,0.4);
+    font-family: 'VT323', monospace;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="platform-row row-tw" id="row-tw">
+    <img class="platform-icon" src="/icones/twitch.png" alt="Twitch">
+    <div class="dot"></div>
+    <div class="viewer-count" id="count-tw">0</div>
+    <!-- <div class="viewer-label">viewers</div> -->
+  </div>
+
+  <div class="platform-row row-yt" id="row-yt">
+    <img class="platform-icon" src="/icones/youtube.png" alt="YouTube">
+    <div class="dot"></div>
+    <div class="viewer-count" id="count-yt">0</div>
+    <!-- <div class="viewer-label">viewers</div> -->
+  </div>
+
+  <div class="platform-row row-kick" id="row-kick">
+    <img class="platform-icon" src="/icones/kick.png" alt="Kick">
+    <div class="dot"></div>
+    <div class="viewer-count" id="count-kick">0</div>
+   <!--  <div class="viewer-label">viewers</div> -->
+  </div>
+
+  <!-- Painel de edição -->
+  <div id="edit-panel">
+    <span>Arraste os componentes para reposicionar • pressione E para sair</span>
+    <button class="ep-btn" onclick="applyLayout('vertical')">⬇ Vertical</button>
+    <button class="ep-btn" onclick="applyLayout('horizontal')">➡ Horizontal</button>
+    <button class="ep-btn" onclick="applyLayout('staircase')">↗ Escada</button>
+    <div class="ep-separator"></div>
+    <button class="ep-btn" onclick="resetPositions()">↺ Reset</button>
+    <button class="ep-btn ep-done" onclick="toggleEdit()">✓ Concluído</button>
+  </div>
+
+<script>
+  const ROWS = [
+    { id: 'row-tw',   key: 'tw',   defaultPos: { x: 10, y: 10  } },
+    { id: 'row-yt',   key: 'yt',   defaultPos: { x: 10, y: 58  } },
+    { id: 'row-kick', key: 'kick', defaultPos: { x: 10, y: 106 } },
+  ];
+
+  const API_POS = '/overlay/viewers/positions';
+
+  // ── Posições (servidor) ───────────────────────────────────────
+  async function loadPositions() {
+    try {
+      const r = await fetch(API_POS);
+      return r.ok ? await r.json() : {};
+    } catch { return {}; }
+  }
+
+  function savePositions() {
+    const pos = {};
+    ROWS.forEach(r => {
+      const el = document.getElementById(r.id);
+      pos[r.key] = { x: parseInt(el.style.left), y: parseInt(el.style.top) };
+    });
+    fetch(API_POS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(pos),
+    }).catch(() => {});
+  }
+
+  async function applyPositions() {
+    const saved = await loadPositions();
+    ROWS.forEach(r => {
+      const el  = document.getElementById(r.id);
+      const pos = saved[r.key] || r.defaultPos;
+      el.style.left = pos.x + 'px';
+      el.style.top  = pos.y + 'px';
+    });
+  }
+
+  function resetPositions() {
+    ROWS.forEach(r => {
+      const el = document.getElementById(r.id);
+      el.style.left = r.defaultPos.x + 'px';
+      el.style.top  = r.defaultPos.y + 'px';
+    });
+  }
+
+  // ── Layouts predefinidos ──────────────────────────────────────
+  const LAYOUTS = {
+    vertical: [
+      { key: 'tw',   x: 10, y: 10  },
+      { key: 'yt',   x: 10, y: 58  },
+      { key: 'kick', x: 10, y: 106 },
+    ],
+    horizontal: [
+      { key: 'tw',   x: 10,  y: 10 },
+      { key: 'yt',   x: 165, y: 10 },
+      { key: 'kick', x: 320, y: 10 },
+    ],
+    staircase: [
+      { key: 'tw',   x: 10,  y: 10  },
+      { key: 'yt',   x: 60,  y: 58  },
+      { key: 'kick', x: 110, y: 106 },
+    ],
+  };
+
+  function applyLayout(name) {
+    const layout = LAYOUTS[name];
+    if (!layout) return;
+    layout.forEach(({ key, x, y }) => {
+      const row = ROWS.find(r => r.key === key);
+      if (!row) return;
+      const el = document.getElementById(row.id);
+      el.style.left = x + 'px';
+      el.style.top  = y + 'px';
+    });
+    savePositions();
+  }
+
+  // ── Drag & Drop ───────────────────────────────────────────────
+  let dragEl = null, ox = 0, oy = 0;
+
+  function initDrag(el) {
+    el.addEventListener('mousedown', e => {
+      if (!document.body.classList.contains('edit-mode')) return;
+      dragEl = el;
+      ox = e.clientX - el.getBoundingClientRect().left;
+      oy = e.clientY - el.getBoundingClientRect().top;
+      el.classList.add('dragging');
+      e.preventDefault();
+    });
+  }
+
+  document.addEventListener('mousemove', e => {
+    if (!dragEl) return;
+    const x = Math.max(0, Math.min(e.clientX - ox, window.innerWidth  - dragEl.offsetWidth));
+    const y = Math.max(0, Math.min(e.clientY - oy, window.innerHeight - dragEl.offsetHeight));
+    dragEl.style.left = x + 'px';
+    dragEl.style.top  = y + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragEl) return;
+    dragEl.classList.remove('dragging');
+    savePositions();
+    dragEl = null;
+  });
+
+  // ── Modo edição ───────────────────────────────────────────────
+  function toggleEdit() {
+    document.body.classList.toggle('edit-mode');
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'e' || e.key === 'E') toggleEdit();
+  });
+
+  // ── Polling de status ─────────────────────────────────────────
+  const cntTw   = document.getElementById('count-tw');
+  const cntYt   = document.getElementById('count-yt');
+  const cntKick = document.getElementById('count-kick');
+  const rowTw   = document.getElementById('row-tw');
+  const rowYt   = document.getElementById('row-yt');
+  const rowKick = document.getElementById('row-kick');
+
+  async function poll() {
+    try {
+      const d = await fetch('/stream/status').then(r => r.json());
+      cntTw.textContent   = d.twitch_viewers  ?? 0;
+      cntYt.textContent   = d.youtube_viewers ?? 0;
+      cntKick.textContent = d.kick_viewers    ?? 0;
+      rowTw.classList.toggle('visible',    !!d.twitch_live);
+      rowTw.classList.toggle('hidden-row', !d.twitch_live);
+      rowYt.classList.toggle('visible',    !!d.youtube_live);
+      rowYt.classList.toggle('hidden-row', !d.youtube_live);
+      rowKick.classList.toggle('visible',  !!d.kick_live);
+      rowKick.classList.toggle('hidden-row', !d.kick_live);
+    } catch(e) {}
+  }
+
+  // ── Init ──────────────────────────────────────────────────────
+  ROWS.forEach(r => initDrag(document.getElementById(r.id)));
+  applyPositions();
+
+  // Abre direto em modo edição se ?edit na URL
+  if (new URLSearchParams(location.search).has('edit')) toggleEdit();
+
+  // ── Mensagens do painel externo (dashboard modal) ──────────────────
+  window.addEventListener('message', e => {
+    if (e.data === 'toggle-edit')            toggleEdit();
+    else if (e.data === 'reset')             { resetPositions(); savePositions(); }
+    else if (e.data === 'save')              savePositions();
+    else if (e.data?.type === 'apply-layout') applyLayout(e.data.name);
+  });
+
+  poll();
+  setInterval(poll, 15000);
+</script>
+
+<!-- Badge FREE (oculto para Premium) -->
+<div id="nucleus-badge" style="
+  position:fixed; bottom:8px; right:10px;
+  font-family:'Segoe UI',sans-serif; font-size:10px;
+  color:rgba(255,255,255,0.25); letter-spacing:0.04em;
+  pointer-events:none; display:none;">
+  Powered by Nucleus
+</div>
+<script>
+fetch('/auth/plan').then(r => r.json()).then(d => {
+  if (!d.is_premium) document.getElementById('nucleus-badge').style.display = 'block';
+}).catch(() => { document.getElementById('nucleus-badge').style.display = 'block'; });
+
+// Carrega tema do overlay e escuta mudanças em tempo real
+function _applyOverlayTheme(theme) {
+  document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
+  if (theme && theme !== 'minimal') document.body.classList.add('theme-' + theme);
+}
+
+(async () => {
+  try {
+    const d = await fetch('/overlay/themes').then(r => r.json());
+    _applyOverlayTheme(d.viewers || 'minimal');
+  } catch {}
+})();
+
+// Custom styles
+function _applyCustomCss(css) {
+  let el = document.getElementById('ov-custom-style');
+  if (!el) { el = document.createElement('style'); el.id = 'ov-custom-style'; document.head.appendChild(el); }
+  el.textContent = css || '';
+}
+(async () => {
+  try {
+    const d = await fetch('/overlay/custom-styles/viewers').then(r => r.json());
+    _applyCustomCss(d.css || '');
+  } catch {}
+})();
+
+(function _connectOverlayEvents() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}/ws/overlay-events`);
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'theme_changed') _applyOverlayTheme(msg.themes.viewers || 'minimal');
+      if (msg.type === 'styles_changed' && msg.key === 'viewers') _applyCustomCss(msg.css || '');
+    } catch {}
+  };
+  ws.onclose = () => setTimeout(_connectOverlayEvents, 3000);
+})();
+</script>
+</body>
+</html>

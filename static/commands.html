@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comandos · Nucleus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="/static/theme.js"></script>
+<script src="/static/supabase.js"></script>
+<script src="/static/nucleus-auth.js"></script>
+<style id="_ah">body{visibility:hidden!important}</style>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:      #060912;
+  --wrap:    #0e1120;
+  --card:    #141828;
+  --card2:   #1a1f32;
+  --border:  rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text:    #dde3f0;
+  --muted:   #4b5478;
+  --dim:     #252b42;
+  --cyan:    #00c8e0;
+  --cyan2:   #00a8be;
+  --purple:  #9147ff;
+  --red:     #ef4444;
+  --green:   #22c55e;
+  --yellow:  #f59e0b;
+  --r: 10px; --r2: 6px; --r3: 8px;
+}
+html[data-theme="light"] {
+  --bg: #e8ecf6; --wrap: #ffffff; --card: #f5f7fd; --card2: #eaeefc;
+  --border: rgba(15,25,80,0.08); --border2: rgba(15,25,80,0.14);
+  --text: #0d1229; --muted: #5e6d96; --dim: #b8c3df;
+}
+html[data-theme="light"] .app-wrap { box-shadow: 0 4px 24px rgba(0,0,0,.08); }
+html[data-theme="light"] .page-header { background: rgba(0,0,0,0.03); }
+html[data-theme="light"] body::before { background: radial-gradient(ellipse, rgba(0,150,200,0.05) 0%, transparent 70%); }
+html[data-theme="light"] body::after { background: radial-gradient(ellipse, rgba(120,0,200,0.04) 0%, transparent 70%); }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 3px; }
+
+body {
+  background: var(--bg);
+  font-family: 'Inter', system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+  font-size: 14px; color: var(--text);
+  height: 100vh; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+body.sb-col { --sb-w: var(--sb-wc, 46px); }
+
+/* ── Wrapper (full screen) ───────────────────────────── */
+.app-wrap {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ── Header (matches nk-titlebar) ───────────────────── */
+.page-header {
+  height: 44px; min-height: 44px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 16px; border-bottom: 1px solid var(--border);
+  background: var(--wrap);
+}
+.page-back { display: none; }
+.page-title {
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  letter-spacing: 1px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px;
+}
+.page-title .icon { display: none; }
+.page-title span { color: var(--muted); }
+.hdr-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* ── Buttons ──────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: var(--r2); padding: 7px 14px; font-size: 12px;
+  font-family: inherit; font-weight: 600; cursor: pointer;
+  border: 1px solid; transition: all .15s; text-decoration: none; white-space: nowrap;
+}
+.btn-primary { background: rgba(0,200,224,.12); border-color: rgba(0,200,224,.35); color: var(--cyan); }
+.btn-primary:hover { background: rgba(0,200,224,.2); border-color: rgba(0,200,224,.5); }
+.btn-ghost   { background: none; border-color: var(--border2); color: var(--muted); }
+.btn-ghost:hover { color: var(--text); background: rgba(255,255,255,.04); }
+.btn-danger  { background: none; border-color: rgba(239,68,68,.25); color: rgba(239,68,68,.6); }
+.btn-danger:hover { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.45); color: var(--red); }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn svg { flex-shrink: 0; }
+
+/* ── Scrollable body ─────────────────────────────────── */
+.app-scroll { flex: 1; overflow-y: auto; }
+.app-scroll::-webkit-scrollbar { width: 4px; }
+.app-scroll::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+/* ── Stats row ────────────────────────────────────────── */
+.stats-bar {
+  display: flex; gap: 1px;
+  border-bottom: 1px solid var(--border);
+  background: var(--border);
+}
+.stat-item {
+  flex: 1; padding: 10px 16px;
+  background: var(--bg);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.stat-item:first-child { border-radius: 0; }
+.stat-num  { font-size: 22px; font-weight: 900; color: var(--text); line-height: 1; }
+.stat-num.cyan   { color: var(--cyan); }
+.stat-num.purple { color: var(--purple); }
+.stat-num.green  { color: var(--green); }
+.stat-lbl  { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+
+/* ── Toolbar ──────────────────────────────────────────── */
+.toolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 24px; border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.search-wrap {
+  position: relative; flex: 1; min-width: 180px; max-width: 320px;
+}
+.search-wrap svg {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); pointer-events: none;
+}
+.search-input {
+  width: 100%; background: var(--card2); border: 1px solid var(--border2);
+  border-radius: var(--r2); padding: 7px 12px 7px 32px; font-size: 12px;
+  font-family: inherit; color: var(--text); outline: none; transition: border-color .15s;
+}
+.search-input::placeholder { color: var(--muted); }
+.search-input:focus { border-color: rgba(0,200,224,.4); }
+
+.filter-tabs { display: flex; gap: 2px; }
+.ftab {
+  padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  cursor: pointer; border: 1px solid transparent; color: var(--muted);
+  background: none; font-family: inherit; transition: all .15s;
+}
+.ftab:hover { color: var(--text); background: rgba(255,255,255,.04); }
+.ftab.active { background: rgba(0,200,224,.1); border-color: rgba(0,200,224,.3); color: var(--cyan); }
+
+/* ── Page body ────────────────────────────────────────── */
+.page-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+
+/* ── Section header ───────────────────────────────────── */
+.sec-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.sec-title {
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .08em;
+  display: flex; align-items: center; gap: 7px;
+}
+.sec-title .sec-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.sec-title .sec-dot.builtin { background: var(--purple); }
+.sec-title .sec-dot.custom  { background: var(--cyan); }
+
+/* ── Command cards ────────────────────────────────────── */
+.cmd-list { display: flex; flex-direction: column; gap: 6px; }
+
+.cmd-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  align-items: center;
+  gap: 0;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--r3);
+  overflow: hidden;
+  transition: border-color .15s, box-shadow .15s;
+}
+.cmd-card:hover { border-color: rgba(0,200,224,.2); box-shadow: 0 2px 12px rgba(0,200,224,.04); }
+.cmd-card.disabled { opacity: .55; }
+
+/* Left accent bar */
+.cmd-accent {
+  width: 3px; align-self: stretch;
+  background: var(--dim);
+}
+.cmd-card.builtin .cmd-accent { background: var(--purple); }
+.cmd-card.custom  .cmd-accent { background: var(--cyan); }
+.cmd-card.disabled .cmd-accent { background: var(--dim); }
+
+/* Main content */
+.cmd-main {
+  display: flex; align-items: center; gap: 14px;
+  padding: 11px 14px; min-width: 0;
+}
+.cmd-trigger-wrap { flex-shrink: 0; }
+.cmd-trigger {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600;
+  color: var(--cyan); letter-spacing: -.01em;
+}
+.cmd-card.builtin .cmd-trigger { color: var(--purple); }
+.cmd-card.disabled .cmd-trigger { color: var(--muted); }
+
+.cmd-sep { color: var(--dim); flex-shrink: 0; font-size: 16px; line-height: 1; }
+
+.cmd-right-text { flex: 1; min-width: 0; }
+.cmd-desc {
+  font-size: 12px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  line-height: 1.4;
+}
+.cmd-desc .var-tag {
+  display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--yellow); background: rgba(245,158,11,.1);
+  border: 1px solid rgba(245,158,11,.22); border-radius: 4px; padding: 0 4px; margin: 0 1px;
+}
+.cmd-meta {
+  display: flex; align-items: center; gap: 8px; margin-top: 2px;
+}
+.cmd-badge {
+  font-size: 9px; font-weight: 700; border-radius: 4px;
+  padding: 1px 5px; border: 1px solid; letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.cmd-badge.builtin { color: var(--purple); border-color: rgba(145,71,255,.3); background: rgba(145,71,255,.1); }
+.cmd-badge.custom  { color: var(--cyan);   border-color: rgba(0,200,224,.3);   background: rgba(0,200,224,.08); }
+.cmd-meta-txt { font-size: 10px; color: var(--muted); }
+
+/* Cooldown block */
+.cmd-cooldown-block {
+  padding: 0 14px; border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 70px;
+}
+.cmd-cd-label { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.cmd-cd-value { font-size: 13px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.cmd-cd-edit {
+  display: flex; align-items: center; gap: 4px;
+}
+.cd-input {
+  width: 46px; background: var(--card2); border: 1px solid var(--border2);
+  border-radius: 4px; padding: 3px 6px; font-size: 12px; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace; color: var(--text); outline: none;
+  text-align: center; transition: border-color .15s;
+}
+.cd-input:focus { border-color: rgba(0,200,224,.4); }
+.cd-unit { font-size: 10px; color: var(--muted); }
+
+/* Uses block */
+.cmd-uses-block {
+  padding: 0 14px; border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 56px;
+}
+.cmd-uses-label { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.cmd-uses-val { font-size: 13px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* Actions block */
+.cmd-actions {
+  padding: 0 12px; border-left: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* Toggle */
+.toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer; }
+.toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  position: absolute; inset: 0; border-radius: 20px;
+  background: var(--dim); transition: background .2s;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.toggle input:checked + .toggle-track { background: var(--cyan); border-color: var(--cyan); }
+.toggle-thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 12px; height: 12px; border-radius: 50%; background: #fff;
+  transition: transform .2s; pointer-events: none;
+}
+.toggle input:checked ~ .toggle-thumb { transform: translateX(16px); }
+
+/* Icon buttons */
+.icon-btn {
+  width: 28px; height: 28px; border-radius: var(--r2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border: 1px solid var(--border2);
+  background: none; color: var(--muted); transition: all .15s; flex-shrink: 0;
+}
+.icon-btn:hover { background: rgba(255,255,255,.06); color: var(--text); }
+.icon-btn.del:hover { border-color: rgba(239,68,68,.3); color: var(--red); background: rgba(239,68,68,.06); }
+.icon-btn.edit:hover { border-color: rgba(0,200,224,.3); color: var(--cyan); background: rgba(0,200,224,.06); }
+
+/* ── Empty state ──────────────────────────────────────── */
+.empty-state {
+  padding: 36px 20px; text-align: center; color: var(--muted); font-size: 13px;
+  background: var(--card); border: 1px solid var(--border2); border-radius: var(--r3);
+}
+.empty-icon { font-size: 32px; margin-bottom: 10px; opacity: .25; }
+.empty-hint { font-size: 11px; margin-top: 4px; opacity: .7; }
+
+/* ── Variables panel ──────────────────────────────────── */
+.vars-card {
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: var(--r3); padding: 14px 18px;
+}
+.vars-title {
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.vars-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.var-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--card2); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 5px 10px; cursor: pointer;
+  transition: border-color .15s, background .15s;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--yellow);
+  user-select: none;
+}
+.var-chip:hover { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.05); }
+.var-chip:active { transform: scale(.97); }
+.var-chip .chip-desc { font-family: 'Inter', sans-serif; font-size: 10px; color: var(--muted); font-weight: 400; }
+.var-chip .chip-copy { font-size: 9px; color: var(--muted); opacity: 0; transition: opacity .15s; }
+.var-chip:hover .chip-copy { opacity: 1; }
+
+/* ── Modal ────────────────────────────────────────────── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.65); backdrop-filter: blur(6px);
+  align-items: center; justify-content: center; padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--wrap); border: 1px solid var(--border2);
+  border-radius: 14px; width: 100%; max-width: 500px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.7);
+  overflow: hidden;
+}
+.modal-header {
+  padding: 20px 24px 0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { font-size: 15px; font-weight: 800; }
+.modal-close {
+  width: 28px; height: 28px; border-radius: 6px; border: none;
+  background: none; color: var(--muted); cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; transition: all .15s;
+}
+.modal-close:hover { background: rgba(255,255,255,.06); color: var(--text); }
+.modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-label {
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  letter-spacing: .07em; text-transform: uppercase;
+}
+.form-input, .form-textarea {
+  background: var(--card2); border: 1px solid var(--border2);
+  border-radius: var(--r2); padding: 9px 12px; font-size: 13px;
+  font-family: inherit; color: var(--text); outline: none; transition: border-color .15s;
+  width: 100%;
+}
+.form-input:focus, .form-textarea:focus { border-color: rgba(0,200,224,.4); }
+.form-input.mono { font-family: 'JetBrains Mono', monospace; }
+.form-textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+.form-hint { font-size: 10px; color: var(--muted); }
+
+/* Var chips inside modal */
+.modal-vars { display: flex; flex-wrap: wrap; gap: 4px; }
+.mvar-chip {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+  color: var(--yellow); background: rgba(245,158,11,.08);
+  border: 1px solid rgba(245,158,11,.2); border-radius: 4px;
+  padding: 2px 7px; cursor: pointer; transition: all .12s;
+}
+.mvar-chip:hover { background: rgba(245,158,11,.15); border-color: rgba(245,158,11,.4); }
+
+/* Preview */
+.preview-wrap {
+  background: var(--card2); border: 1px solid var(--border);
+  border-radius: var(--r2); padding: 8px 12px; min-height: 34px;
+  font-size: 12px; color: var(--muted); line-height: 1.5;
+}
+.preview-wrap .var-tag {
+  display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--yellow); background: rgba(245,158,11,.1);
+  border: 1px solid rgba(245,158,11,.22); border-radius: 4px; padding: 0 4px; margin: 0 1px;
+}
+
+.error-msg { color: var(--red); font-size: 11px; min-height: 16px; font-weight: 500; }
+.modal-footer {
+  padding: 14px 24px 20px;
+  display: flex; gap: 8px; justify-content: flex-end;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Toast ────────────────────────────────────────────── */
+.toast-container {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 10px 16px; font-size: 12px; font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  animation: toastIn .2s ease; pointer-events: auto;
+}
+.toast.success { border-color: rgba(34,197,94,.3); }
+.toast.success .toast-icon { color: var(--green); }
+.toast.error   { border-color: rgba(239,68,68,.3); }
+.toast.error   .toast-icon { color: var(--red); }
+.toast-icon { font-size: 14px; flex-shrink: 0; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+@keyframes toastOut { to { opacity: 0; transform: translateX(20px); } }
+
+/* ── No results ───────────────────────────────────────── */
+.no-results {
+  padding: 24px; text-align: center; color: var(--muted); font-size: 12px;
+  background: var(--card); border: 1px dashed var(--border2); border-radius: var(--r3);
+}
+</style>
+</head>
+<body>
+<script src="/static/nucleus-sidebar.js"></script>
+<div class="app-wrap">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-title">Comandos</div>
+    <div class="hdr-right">
+      <button class="btn btn-primary" onclick="openModal()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        Novo Comando
+      </button>
+    </div>
+  </div>
+
+  <div class="app-scroll">
+
+  <!-- Stats bar -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <div class="stat-num" id="s-total">—</div>
+      <div class="stat-lbl">Total</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num green" id="s-enabled">—</div>
+      <div class="stat-lbl">Ativos</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num purple" id="s-builtin">—</div>
+      <div class="stat-lbl">Built-in</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num cyan" id="s-custom">—</div>
+      <div class="stat-lbl">Personalizados</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="s-uses">—</div>
+      <div class="stat-lbl">Usos totais</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="search-input" id="search" placeholder="Buscar comando..." oninput="filterRender()">
+    </div>
+    <div class="filter-tabs">
+      <button class="ftab active" data-filter="all"      onclick="setFilter('all',this)">Todos</button>
+      <button class="ftab"        data-filter="builtin"  onclick="setFilter('builtin',this)">Built-in</button>
+      <button class="ftab"        data-filter="custom"   onclick="setFilter('custom',this)">Personalizados</button>
+      <button class="ftab"        data-filter="enabled"  onclick="setFilter('enabled',this)">Ativos</button>
+      <button class="ftab"        data-filter="disabled" onclick="setFilter('disabled',this)">Inativos</button>
+    </div>
+  </div>
+
+  <div class="page-body">
+
+    <!-- Built-ins section -->
+    <div id="sec-builtin">
+      <div class="sec-head">
+        <div class="sec-title">
+          <div class="sec-dot builtin"></div>
+          Comandos Built-in
+        </div>
+      </div>
+      <div class="cmd-list" id="builtin-list"></div>
+    </div>
+
+    <!-- Custom section -->
+    <div id="sec-custom">
+      <div class="sec-head">
+        <div class="sec-title">
+          <div class="sec-dot custom"></div>
+          Comandos Personalizados
+        </div>
+      </div>
+      <div class="cmd-list" id="custom-list"></div>
+    </div>
+
+    <!-- Variables panel -->
+    <div class="vars-card">
+      <div class="vars-title">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 16.1A5 5 0 0 1 5.5 8h.5a6 6 0 0 1 12 0h.5a5 5 0 0 1 1.9 8.1M12 12v9"/></svg>
+        Variáveis disponíveis — clique para copiar ou inserir na resposta
+      </div>
+      <div class="vars-grid">
+        <div class="var-chip" onclick="copyVar('{user}')">
+          {user} <span class="chip-desc">nome do usuário</span><span class="chip-copy">copiar</span>
+        </div>
+        <div class="var-chip" onclick="copyVar('{platform}')">
+          {platform} <span class="chip-desc">twitch / youtube / kick</span><span class="chip-copy">copiar</span>
+        </div>
+        <div class="var-chip" onclick="copyVar('{viewers}')">
+          {viewers} <span class="chip-desc">viewers agora</span><span class="chip-copy">copiar</span>
+        </div>
+        <div class="var-chip" onclick="copyVar('{uptime}')">
+          {uptime} <span class="chip-desc">tempo de live</span><span class="chip-copy">copiar</span>
+        </div>
+        <div class="var-chip" onclick="copyVar('{song}')">
+          {song} <span class="chip-desc">música tocando</span><span class="chip-copy">copiar</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page-body -->
+  </div><!-- /app-scroll -->
+</div><!-- /app-wrap -->
+
+<!-- Modal: Create / Edit -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Novo Comando</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-group">
+        <label class="form-label">Trigger</label>
+        <input class="form-input mono" id="f-trigger" placeholder="!discord" maxlength="40" oninput="updatePreview()">
+        <div class="form-hint">Começa com ! — ex: !discord, !redes, !clip</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" style="display:flex;justify-content:space-between">
+          Resposta
+          <span style="font-size:9px;color:var(--muted);text-transform:none;letter-spacing:0">Insira variáveis clicando abaixo</span>
+        </label>
+        <textarea class="form-textarea" id="f-response" placeholder="Acesse: discord.gg/exemplo" maxlength="400" oninput="updatePreview()"></textarea>
+        <div class="modal-vars" id="modal-vars">
+          <div class="mvar-chip" onclick="insertVar('{user}')">      {user}      </div>
+          <div class="mvar-chip" onclick="insertVar('{platform}')">  {platform}  </div>
+          <div class="mvar-chip" onclick="insertVar('{viewers}')">   {viewers}   </div>
+          <div class="mvar-chip" onclick="insertVar('{uptime}')">    {uptime}    </div>
+          <div class="mvar-chip" onclick="insertVar('{song}')">      {song}      </div>
+        </div>
+      </div>
+
+      <div class="form-group" id="preview-group">
+        <label class="form-label">Pré-visualização</label>
+        <div class="preview-wrap" id="f-preview"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Cooldown (segundos)</label>
+          <input class="form-input" id="f-cooldown" type="number" min="0" max="3600" value="5">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrição (opcional)</label>
+          <input class="form-input" id="f-desc" placeholder="Ex: Link do Discord">
+        </div>
+      </div>
+
+      <div class="error-msg" id="modal-error"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="modal-save-btn" onclick="saveCommand()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Salvar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+NucleusAuth.guard();
+
+let _commands = [];
+let _editId   = null;
+let _filter   = 'all';
+
+const VARS = ['{user}','{platform}','{viewers}','{uptime}','{song}'];
+
+/* ── Toast ────────────────────────────────────────────── */
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span class="toast-icon">${type === 'success' ? '✓' : '✕'}</span>${msg}`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'toastOut .2s ease forwards';
+    setTimeout(() => el.remove(), 200);
+  }, 2800);
+}
+
+/* ── Load ─────────────────────────────────────────────── */
+async function load() {
+  try {
+    _commands = await fetch('/api/commands').then(r => r.json());
+    updateStats();
+    filterRender();
+  } catch (e) { console.error('load:', e); }
+}
+
+/* ── Stats ────────────────────────────────────────────── */
+function updateStats() {
+  const builtins = _commands.filter(c => c.builtin);
+  const customs  = _commands.filter(c => !c.builtin);
+  const enabled  = _commands.filter(c => c.enabled);
+  const uses     = _commands.reduce((s, c) => s + (c.uses || 0), 0);
+  document.getElementById('s-total').textContent   = _commands.length;
+  document.getElementById('s-enabled').textContent = enabled.length;
+  document.getElementById('s-builtin').textContent = builtins.length;
+  document.getElementById('s-custom').textContent  = customs.length;
+  document.getElementById('s-uses').textContent    = uses;
+}
+
+/* ── Filter / render ──────────────────────────────────── */
+let _activeFilter = 'all';
+function setFilter(f, btn) {
+  _activeFilter = f;
+  document.querySelectorAll('.ftab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterRender();
+}
+
+function filterRender() {
+  const q = (document.getElementById('search').value || '').toLowerCase();
+
+  let visible = _commands.filter(c => {
+    if (_activeFilter === 'builtin'  && !c.builtin)   return false;
+    if (_activeFilter === 'custom'   && c.builtin)    return false;
+    if (_activeFilter === 'enabled'  && !c.enabled)   return false;
+    if (_activeFilter === 'disabled' && c.enabled)    return false;
+    if (q) {
+      const haystack = `${c.trigger} ${c.description || ''} ${c.response || ''}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const builtins = visible.filter(c => c.builtin);
+  const customs  = visible.filter(c => !c.builtin);
+
+  const bEl = document.getElementById('builtin-list');
+  const cEl = document.getElementById('custom-list');
+  const sSB = document.getElementById('sec-builtin');
+  const sSC = document.getElementById('sec-custom');
+
+  // Show/hide sections based on filter
+  const showBuiltin = _activeFilter !== 'custom';
+  const showCustom  = _activeFilter !== 'builtin';
+  sSB.style.display = showBuiltin ? '' : 'none';
+  sSC.style.display = showCustom  ? '' : 'none';
+
+  if (showBuiltin) bEl.innerHTML = builtins.length ? builtins.map(renderCard).join('') : noResults();
+  if (showCustom)  cEl.innerHTML = customs.length  ? customs.map(renderCard).join('')  : emptyCustom();
+}
+
+function noResults() {
+  return `<div class="no-results">Nenhum comando encontrado para este filtro.</div>`;
+}
+function emptyCustom() {
+  if (_activeFilter !== 'all' && _activeFilter !== 'custom') return noResults();
+  return `<div class="empty-state">
+    <div class="empty-icon">💬</div>
+    <div>Nenhum comando personalizado ainda</div>
+    <div class="empty-hint">Clique em "+ Novo Comando" para criar o seu primeiro</div>
+  </div>`;
+}
+
+function renderCard(c) {
+  const isBuiltin = c.builtin;
+  const disabled  = !c.enabled ? 'disabled' : '';
+  const typeClass = isBuiltin ? 'builtin' : 'custom';
+  const badge     = isBuiltin
+    ? `<span class="cmd-badge builtin">built-in</span>`
+    : `<span class="cmd-badge custom">custom</span>`;
+  const desc = c.builtin
+    ? c.description
+    : highlightVars(c.response || c.description || '');
+  const uses = c.uses || 0;
+
+  const editBtn = !isBuiltin
+    ? `<button class="icon-btn edit" title="Editar" onclick="openEdit('${c.id}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+       </button>` : '';
+  const delBtn = !isBuiltin
+    ? `<button class="icon-btn del" title="Deletar" onclick="deleteCmd('${c.id}')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+       </button>` : '';
+
+  return `<div class="cmd-card ${typeClass} ${disabled}" id="row-${c.id}">
+    <div class="cmd-accent"></div>
+    <div class="cmd-main">
+      <div class="cmd-trigger-wrap">
+        <span class="cmd-trigger">${c.trigger}</span>
+      </div>
+      <div class="cmd-sep">›</div>
+      <div class="cmd-right-text">
+        <div class="cmd-desc">${desc}</div>
+        <div class="cmd-meta">${badge}<span class="cmd-meta-txt">${uses} uso${uses !== 1 ? 's' : ''}</span></div>
+      </div>
+    </div>
+    <div class="cmd-cooldown-block">
+      <div class="cmd-cd-label">Cooldown</div>
+      <div class="cmd-cd-edit">
+        <input class="cd-input" type="number" min="0" max="3600" value="${c.cooldown}"
+          onchange="saveCooldown('${c.id}', this.value)" title="Alterar cooldown">
+        <span class="cd-unit">s</span>
+      </div>
+    </div>
+    <div class="cmd-uses-block">
+      <div class="cmd-uses-label">Usos</div>
+      <div class="cmd-uses-val" id="uses-${c.id}">${uses}</div>
+    </div>
+    <div class="cmd-actions">
+      <label class="toggle" title="${c.enabled ? 'Desativar' : 'Ativar'}">
+        <input type="checkbox" ${c.enabled ? 'checked' : ''} onchange="toggleCmd('${c.id}', this)">
+        <div class="toggle-track"></div>
+        <div class="toggle-thumb"></div>
+      </label>
+      ${editBtn}
+      ${delBtn}
+    </div>
+  </div>`;
+}
+
+function highlightVars(text) {
+  return text.replace(/\{[a-z_]+\}/g, m => `<span class="var-tag">${m}</span>`);
+}
+
+/* ── Cooldown inline edit ─────────────────────────────── */
+async function saveCooldown(id, val) {
+  const cooldown = Math.max(0, Math.min(3600, parseInt(val) || 0));
+  try {
+    await fetch(`/api/commands/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cooldown }),
+    });
+    const cmd = _commands.find(c => c.id === id);
+    if (cmd) cmd.cooldown = cooldown;
+    toast('Cooldown atualizado');
+  } catch { toast('Erro ao salvar cooldown', 'error'); }
+}
+
+/* ── Toggle ───────────────────────────────────────────── */
+async function toggleCmd(id, checkbox) {
+  try {
+    const res  = await fetch(`/api/commands/${id}/toggle`, { method: 'PATCH' });
+    const data = await res.json();
+    const cmd  = _commands.find(c => c.id === id);
+    if (cmd) cmd.enabled = data.enabled;
+    // Update card class without full re-render
+    const card = document.getElementById(`row-${id}`);
+    if (card) card.classList.toggle('disabled', !data.enabled);
+    const trigger = card?.querySelector('.cmd-trigger');
+    if (trigger) trigger.style.opacity = data.enabled ? '' : '';
+    toast(data.enabled ? 'Comando ativado' : 'Comando desativado');
+    updateStats();
+  } catch {
+    checkbox.checked = !checkbox.checked;
+    toast('Erro ao alterar estado', 'error');
+  }
+}
+
+/* ── Delete ───────────────────────────────────────────── */
+async function deleteCmd(id) {
+  const cmd = _commands.find(c => c.id === id);
+  if (!confirm(`Deletar "${cmd?.trigger}"?`)) return;
+  try {
+    await fetch(`/api/commands/${id}`, { method: 'DELETE' });
+    _commands = _commands.filter(c => c.id !== id);
+    updateStats();
+    filterRender();
+    toast(`Comando "${cmd?.trigger}" removido`);
+  } catch { toast('Erro ao deletar', 'error'); }
+}
+
+/* ── Modal ────────────────────────────────────────────── */
+function openModal(isBuiltin = false) {
+  _editId = null;
+  document.getElementById('modal-title').textContent = 'Novo Comando';
+  document.getElementById('f-trigger').value  = '';
+  document.getElementById('f-response').value = '';
+  document.getElementById('f-cooldown').value = '5';
+  document.getElementById('f-desc').value     = '';
+  document.getElementById('modal-error').textContent = '';
+  document.getElementById('f-trigger').disabled = false;
+  document.getElementById('f-response').disabled = false;
+  document.getElementById('modal-save-btn').disabled = false;
+  document.getElementById('modal-vars').style.display = '';
+  document.getElementById('preview-group').style.display = '';
+  updatePreview();
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('f-trigger').focus(), 50);
+}
+
+function openEdit(id) {
+  const cmd = _commands.find(c => c.id === id);
+  if (!cmd) return;
+  _editId = id;
+  document.getElementById('modal-title').textContent = 'Editar Comando';
+  document.getElementById('f-trigger').value  = cmd.trigger;
+  document.getElementById('f-response').value = cmd.response || '';
+  document.getElementById('f-cooldown').value = cmd.cooldown ?? 5;
+  document.getElementById('f-desc').value     = cmd.description || '';
+  document.getElementById('modal-error').textContent = '';
+  document.getElementById('f-trigger').disabled = cmd.builtin;
+  document.getElementById('f-response').disabled = cmd.builtin;
+  document.getElementById('modal-vars').style.display = cmd.builtin ? 'none' : '';
+  document.getElementById('preview-group').style.display = cmd.builtin ? 'none' : '';
+  updatePreview();
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  _editId = null;
+}
+
+function updatePreview() {
+  const val = document.getElementById('f-response').value;
+  const el  = document.getElementById('f-preview');
+  if (!val) { el.innerHTML = '<span style="opacity:.4;font-size:11px">A resposta aparecerá aqui...</span>'; return; }
+  el.innerHTML = highlightVars(val.replace(/</g,'&lt;').replace(/>/g,'&gt;'));
+}
+
+async function saveCommand() {
+  const trigger  = document.getElementById('f-trigger').value.trim();
+  const response = document.getElementById('f-response').value.trim();
+  const cooldown = parseInt(document.getElementById('f-cooldown').value) || 5;
+  const desc     = document.getElementById('f-desc').value.trim();
+  const errEl    = document.getElementById('modal-error');
+
+  if (!_editId) {
+    if (!trigger)  { errEl.textContent = 'Informe o trigger do comando.'; return; }
+    if (!response) { errEl.textContent = 'Informe a resposta do comando.'; return; }
+  }
+  errEl.textContent = '';
+
+  try {
+    if (_editId) {
+      const cmd = _commands.find(c => c.id === _editId);
+      const body = cmd?.builtin
+        ? { cooldown }
+        : { trigger, response, cooldown, description: desc };
+      const res  = await fetch(`/commands/${_editId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || 'Erro ao salvar.'; return; }
+      const idx = _commands.findIndex(c => c.id === _editId);
+      if (idx !== -1) _commands[idx] = { ..._commands[idx], ...data };
+      toast('Comando atualizado');
+    } else {
+      const res  = await fetch('/api/commands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trigger, response, cooldown, description: desc }),
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || 'Erro ao criar.'; return; }
+      _commands.push(data);
+      toast(`Comando ${data.trigger} criado!`);
+    }
+    closeModal();
+    updateStats();
+    filterRender();
+  } catch (e) { errEl.textContent = 'Erro de conexão: ' + e; }
+}
+
+/* ── Variable helpers ─────────────────────────────────── */
+function insertVar(v) {
+  const ta = document.getElementById('f-response');
+  if (ta.disabled) return;
+  const s = ta.selectionStart ?? ta.value.length;
+  const e = ta.selectionEnd   ?? ta.value.length;
+  ta.value = ta.value.slice(0, s) + v + ta.value.slice(e);
+  ta.selectionStart = ta.selectionEnd = s + v.length;
+  ta.focus();
+  updatePreview();
+}
+
+function copyVar(v) {
+  navigator.clipboard.writeText(v).catch(() => {});
+  // Also insert if f-response is focused
+  const ta = document.getElementById('f-response');
+  if (document.activeElement === ta) { insertVar(v); return; }
+  toast(`${v} copiado!`);
+}
+
+/* ── Close on overlay click ───────────────────────────── */
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+/* ── Keyboard ─────────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' && e.ctrlKey && document.getElementById('modal').classList.contains('open')) {
+    e.preventDefault(); saveCommand();
+  }
+});
+
+load();
+</script>
+</body>
+</html>

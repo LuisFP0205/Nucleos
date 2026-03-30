@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Música — Nucleus</title>
+<script src="/static/supabase.js"></script>
+<script src="/static/nucleus-auth.js"></script>
+<style id="_ah">body{visibility:hidden!important}</style>
+<style>
+.nk-page { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+.nk-titlebar { height:40px; min-height:40px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; border-bottom:1px solid var(--border); background:var(--wrap); flex-shrink:0; }
+.nk-title { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.nk-row { display:flex; align-items:center; }
+
+.music-layout { flex:1; display:grid; grid-template-columns:260px 1fr; overflow:hidden; }
+
+/* ── Now playing panel ── */
+.np-panel { border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+.np-art {
+  width:100%; aspect-ratio:1; background:var(--card);
+  display:flex; align-items:center; justify-content:center;
+  font-size:48px; color:var(--dim); overflow:hidden; flex-shrink:0; max-height:260px;
+}
+.np-art img { width:100%; height:100%; object-fit:cover; }
+.np-info { padding:14px; border-bottom:1px solid var(--border); }
+.np-track  { font-size:13.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.np-artist { font-size:12px; color:var(--muted); margin-top:3px; }
+.np-album  { font-size:11px; color:var(--dim); margin-top:2px; font-style:italic; }
+.np-prog-wrap { height:3px; background:var(--card); margin:10px 0 5px; border-radius:1px; }
+.np-prog-bar  { height:100%; background:var(--cyan); border-radius:1px; transition:width .5s linear; width:0%; box-shadow:0 0 6px var(--cyan); }
+.np-times { display:flex; justify-content:space-between; font-size:10px; color:var(--dim); font-family:var(--mono); }
+.np-player {
+  display:flex; align-items:center; gap:5px;
+  font-size:11px; color:var(--dim); padding:10px 14px;
+  border-bottom:1px solid var(--border); font-family:var(--mono);
+}
+.np-led { width:5px; height:5px; border-radius:50%; background:var(--cyan); animation:blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.np-none { padding:30px 14px; text-align:center; color:var(--dim); font-size:12px; }
+.np-none small { display:block; margin-top:6px; font-size:10px; color:var(--muted); opacity:.5; }
+
+/* ── Right panel ── */
+.music-right { display:flex; flex-direction:column; overflow-y:auto; }
+.info-section { border-bottom:1px solid var(--border); }
+.info-hd {
+  height:32px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 14px; font-size:10px; font-weight:700; color:var(--dim);
+  text-transform:uppercase; letter-spacing:.8px;
+  border-bottom:1px solid var(--border); background:var(--wrap);
+}
+.info-row { display:flex; justify-content:space-between; align-items:center; padding:7px 14px; border-bottom:1px solid var(--border); font-size:12px; }
+.info-row:last-child { border-bottom:none; }
+.info-key { color:var(--muted); }
+.info-val { color:var(--text); font-family:var(--mono); font-size:11.5px; }
+
+/* Overlay URL row */
+.url-row {
+  display:flex; align-items:center; gap:7px; padding:10px 14px;
+  border-bottom:1px solid var(--border); background:var(--wrap);
+}
+.url-val {
+  flex:1; font-size:11px; font-family:var(--mono); color:var(--muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.copy-btn {
+  height:24px; width:28px; display:flex; align-items:center; justify-content:center;
+  background:var(--card); border:1px solid var(--border); color:var(--muted);
+  cursor:pointer; font-size:13px; flex-shrink:0; transition:color .12s; border-radius:var(--r1);
+}
+.copy-btn:hover { color:var(--text); border-color:var(--border2); }
+.copy-btn.ok { color:var(--green); }
+</style>
+</head>
+<body>
+<script src="/static/nucleus-sidebar.js"></script>
+<div class="nk-page">
+  <div class="nk-titlebar">
+    <span class="nk-title">Música</span>
+    <div class="nk-row" style="gap:7px">
+      <span id="music-sub-lbl" style="font-size:11px;color:var(--dim);font-family:var(--mono)">—</span>
+      <a class="btn btn-ghost btn-sm" href="/overlay/music" target="_blank">Abrir overlay</a>
+    </div>
+  </div>
+
+  <div class="music-layout">
+
+    <!-- Now playing -->
+    <div class="np-panel">
+      <div class="np-art" id="np-art">♪</div>
+      <div id="np-playing" style="display:none">
+        <div class="np-info">
+          <div class="np-track"  id="np-track">—</div>
+          <div class="np-artist" id="np-artist">—</div>
+          <div class="np-prog-wrap"><div class="np-prog-bar" id="np-bar"></div></div>
+        </div>
+        <div class="np-player"><div class="np-led"></div><span id="np-player">—</span></div>
+      </div>
+      <div class="np-none" id="np-none">Nenhuma música detectada<small>Reproduza no Spotify, YouTube Music ou VLC</small></div>
+    </div>
+
+    <!-- Right -->
+    <div class="music-right">
+
+      <!-- Overlay URL -->
+      <div class="info-section">
+        <div class="info-hd">Overlay URL</div>
+        <div class="url-row">
+          <span class="url-val" id="ov-url"></span>
+          <button class="copy-btn" id="copy-btn" onclick="copyURL()" title="Copiar">⎘</button>
+          <a class="btn btn-primary btn-sm" href="/overlay/music" target="_blank">Abrir</a>
+        </div>
+      </div>
+
+      <!-- Detection info -->
+      <div class="info-section">
+        <div class="info-hd">Informações de detecção</div>
+        <div class="info-row"><span class="info-key">Status</span>    <span class="info-val" id="det-status">—</span></div>
+        <div class="info-row"><span class="info-key">Player</span>    <span class="info-val" id="det-player">—</span></div>
+        <div class="info-row"><span class="info-key">Thumbnail</span> <span class="info-val" id="det-thumb">—</span></div>
+      </div>
+
+      <!-- How it works -->
+      <div class="info-section">
+        <div class="info-hd">Como funciona</div>
+        <div style="padding:12px 14px;font-size:11.5px;color:var(--muted);line-height:1.7">
+          Detecta via <span style="color:var(--cyan);font-family:var(--mono)">Windows GSMTC</span> (Global System Media Transport Controls).<br>
+          Compatível: <span style="color:var(--text)">Spotify · YouTube Music · VLC · WMP</span><br>
+          Para OBS: adicione o overlay como <span style="color:var(--text);font-family:var(--mono)">Browser Source</span>.
+        </div>
+      </div>
+
+    </div><!-- /music-right -->
+  </div>
+</div>
+
+<script>
+NucleusAuth.guard();
+(function(){
+  document.getElementById("ov-url").textContent=location.origin+"/overlay/music";
+  function fmt(s){s=Math.floor(s||0);return`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;}
+
+  window.copyURL=async()=>{
+    const url=location.origin+"/overlay/music";
+    try{await navigator.clipboard.writeText(url);}catch(_){const t=document.createElement("textarea");t.value=url;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove();}
+    const b=document.getElementById("copy-btn");
+    b.classList.add("ok");b.textContent="✓";
+    setTimeout(()=>{b.classList.remove("ok");b.textContent="⎘";},1800);
+    NucleusToast("URL copiada","ok",1500);
+  };
+
+  async function poll(){
+    try{
+      const r=await fetch("/music/current");if(!r.ok){noMusic();return;}
+      const d=await r.json();if(!d.title){noMusic();return;}
+      document.getElementById("np-playing").style.display="";
+      document.getElementById("np-none").style.display="none";
+      document.getElementById("np-track").textContent=d.title||"—";
+      document.getElementById("np-artist").textContent=d.artist||"—";
+      document.getElementById("np-player").textContent=d.player||"—";
+      const pos=d.position||0,dur=d.duration||0;
+      document.getElementById("np-bar").style.width=dur>0?`${(pos/dur*100).toFixed(1)}%`:"0%";
+      const art=document.getElementById("np-art");
+      art.innerHTML=d.thumbnail?`<img src="${d.thumbnail}" alt="">`:"♪";
+      document.getElementById("det-status").textContent="Detectada";
+      document.getElementById("det-player").textContent=d.player||"—";
+      document.getElementById("det-thumb").textContent=d.thumbnail?"sim":"não";
+      document.getElementById("music-sub-lbl").textContent=`${d.artist||""} — ${d.title||""}`;
+    }catch(_){noMusic();}
+  }
+  function noMusic(){
+    document.getElementById("np-playing").style.display="none";
+    document.getElementById("np-none").style.display="";
+    document.getElementById("np-art").innerHTML="♪";
+    document.getElementById("det-status").textContent="Sem mídia";
+    document.getElementById("music-sub-lbl").textContent="—";
+  }
+  poll();setInterval(poll,3000);
+})();
+</script>
+</body>
+</html>

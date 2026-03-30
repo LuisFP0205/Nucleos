@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Camera Overlay</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800&family=JetBrains+Mono:wght@400;700&family=VT323&family=Bungee&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* circle precisa centralizar o conteúdo */
+  body.theme-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Frame base (borda perimetral, centro vazio) ─────────────── */
+  .cam-frame {
+    position: absolute;
+    inset: 0;
+    border: 3px solid rgba(155,155,155,0.5);
+    border-radius: 8px;
+    pointer-events: none;
+  }
+
+  /* ── Cantos em L ─────────────────────────────────────────────── */
+  .corner {
+    position: absolute;
+    width: 28px; height: 28px;
+    border-color: #9B9B9B;
+    border-style: solid;
+  }
+  .tl { top:0;    left:0;  border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+  .tr { top:0;    right:0; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
+  .bl { bottom:0; left:0;  border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
+  .br { bottom:0; right:0; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+
+  /* circle e hex: esconde cantos padrão */
+  body.theme-circle .corner,
+  body.theme-hex     .corner,
+  body.theme-retro-tv .corner { display: none; }
+
+  /* circle e hex: esconde o frame padrão */
+  body.theme-circle  .cam-frame,
+  body.theme-hex     .cam-frame,
+  body.theme-retro-tv .cam-frame { display: none; }
+
+
+  /* ── Nucleus badge ───────────────────────────────────────────── */
+  #nucleus-badge {
+    position: fixed; bottom: 8px; right: 10px;
+    font-family: 'Segoe UI', Arial, sans-serif; font-size: 10px;
+    color: rgba(255,255,255,0.25); letter-spacing: .04em;
+    pointer-events: none; display: none;
+  }
+
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: TWITCH — borda roxa arredondada
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-twitch .cam-frame {
+    border: 2px solid rgba(145,71,255,0.6);
+    border-radius: 14px;
+    box-shadow: 0 0 16px rgba(145,71,255,0.25), inset 0 0 20px rgba(145,71,255,0.04);
+  }
+  body.theme-twitch .corner { border-color: #9147ff; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: NEON — borda cyan com glow
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-neon .cam-frame {
+    border: 2px solid rgba(0,200,224,0.7);
+    border-radius: 8px;
+    box-shadow: 0 0 14px rgba(0,200,224,0.3), inset 0 0 16px rgba(0,200,224,0.04);
+  }
+  body.theme-neon .corner { border-color: #00c8e0; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: LIGHT — borda clara
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-light .cam-frame {
+    border: 2px solid rgba(255,255,255,0.7);
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(255,255,255,0.15);
+  }
+  body.theme-light .corner { border-color: rgba(255,255,255,0.85); }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: BOXSIDE — só borda lateral esquerda
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-boxside .cam-frame { border: none; border-left: 4px solid #00c8e0; border-radius: 0; }
+  body.theme-boxside .corner   { display: none; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: RETRO — borda verde CRT
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-retro .cam-frame {
+    border: 2px solid #00ff41;
+    border-radius: 0;
+    box-shadow: 0 0 8px rgba(0,255,65,0.25), inset 0 0 14px rgba(0,255,65,0.04);
+  }
+  body.theme-retro .corner { border-color: #00ff41; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: RETRO 80s — borda magenta synthwave
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-retro80 .cam-frame {
+    border: 2px solid #ff1a8c;
+    border-radius: 3px;
+    box-shadow: 0 0 12px rgba(255,26,140,0.25), inset 0 0 18px rgba(255,26,140,0.04);
+  }
+  body.theme-retro80 .corner { border-color: #ff1a8c; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: SOFT — cantos muito arredondados, borda suave
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-soft .cam-frame {
+    border: 2px solid rgba(167,139,250,0.55);
+    border-radius: 32px;
+    box-shadow: 0 0 20px rgba(167,139,250,0.18), inset 0 0 24px rgba(167,139,250,0.04);
+  }
+  body.theme-soft .corner { border-color: #a78bfa; border-radius: 6px; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: ROUND-GOLD — arredondado dourado
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-round-gold .cam-frame {
+    border: 2px solid rgba(245,158,11,0.65);
+    border-radius: 28px;
+    box-shadow: 0 0 18px rgba(245,158,11,0.22), inset 0 0 22px rgba(245,158,11,0.04);
+  }
+  body.theme-round-gold .corner { border-color: #f59e0b; border-radius: 5px; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: ROUND-ROSE — arredondado rosa
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-round-rose .cam-frame {
+    border: 2px solid rgba(244,114,182,0.65);
+    border-radius: 32px;
+    box-shadow: 0 0 18px rgba(244,114,182,0.22), inset 0 0 22px rgba(244,114,182,0.04);
+  }
+  body.theme-round-rose .corner { border-color: #f472b6; border-radius: 6px; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: CIRCLE — anel circular
+  ══════════════════════════════════════════════════════════════ */
+  .circle-wrap {
+    position: relative;
+    width:  min(100vw, 100vh);
+    height: min(100vw, 100vh);
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  body.theme-circle .circle-wrap { display: flex; }
+
+  .ring {
+    position: absolute; inset: 8px;
+    border-radius: 50%;
+    border: 3px solid #00c8e0;
+    box-shadow: 0 0 12px rgba(0,200,224,0.4), 0 0 32px rgba(0,200,224,0.2), inset 0 0 20px rgba(0,200,224,0.06);
+  }
+  .ring-outer {
+    position: absolute; inset: 3px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,200,224,0.2);
+  }
+  /* pontos cardinais */
+  .cdot {
+    position: absolute;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #00c8e0;
+    box-shadow: 0 0 6px #00c8e0;
+  }
+  .cdot.n { top: 8px;    left: 50%; transform: translateX(-50%); }
+  .cdot.s { bottom: 8px; left: 50%; transform: translateX(-50%); }
+  .cdot.e { right: 8px;  top: 50%;  transform: translateY(-50%); }
+  .cdot.w { left: 8px;   top: 50%;  transform: translateY(-50%); }
+
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: HEX — frame hexagonal HUD
+  ══════════════════════════════════════════════════════════════ */
+  .hex-wrap {
+    position: absolute; inset: 0;
+    display: none;
+    pointer-events: none;
+  }
+  body.theme-hex .hex-wrap { display: block; }
+
+  .hud-frame {
+    position: absolute; inset: 6px;
+    border: 2px solid rgba(0,200,224,0.65);
+    clip-path: polygon(
+      20px 0%, calc(100% - 20px) 0%,
+      100% 20px, 100% calc(100% - 20px),
+      calc(100% - 20px) 100%, 20px 100%,
+      0% calc(100% - 20px), 0% 20px
+    );
+    box-shadow: 0 0 12px rgba(0,200,224,0.2);
+  }
+  .hud-inner {
+    position: absolute; inset: 10px;
+    border: 1px solid rgba(0,200,224,0.2);
+    clip-path: polygon(
+      16px 0%, calc(100% - 16px) 0%,
+      100% 16px, 100% calc(100% - 16px),
+      calc(100% - 16px) 100%, 16px 100%,
+      0% calc(100% - 16px), 0% 16px
+    );
+  }
+  /* cantos SVG do hex */
+  .hc { position: absolute; width: 34px; height: 34px; }
+  .hc svg { width: 100%; height: 100%; overflow: visible; }
+  .hc.htl { top: 2px;    left: 2px;  }
+  .hc.htr { top: 2px;    right: 2px; transform: scaleX(-1); }
+  .hc.hbl { bottom: 2px; left: 2px;  transform: scaleY(-1); }
+  .hc.hbr { bottom: 2px; right: 2px; transform: scale(-1);  }
+
+  /* ticks laterais */
+  .htick { position: absolute; background: rgba(0,200,224,0.5); }
+  .htick-t, .htick-b { height: 3px; width: 28px; left: 50%; transform: translateX(-50%); }
+  .htick-l, .htick-r { width: 3px; height: 16px; top: 50%;  transform: translateY(-50%); }
+  .htick-t { top: 6px; }  .htick-b { bottom: 6px; }
+  .htick-l { left: 6px; } .htick-r { right: 6px; }
+
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: RETRO-TV — moldura de TV antiga (sem scan lines)
+  ══════════════════════════════════════════════════════════════ */
+  .tv-wrap {
+    position: absolute; inset: 0;
+    display: none;
+    pointer-events: none;
+  }
+  body.theme-retro-tv .tv-wrap { display: block; }
+
+  .tv-outer {
+    position: absolute; inset: 4px;
+    border-radius: 20px;
+    border: 5px solid #2c2c2c;
+    box-shadow:
+      0 0 0 2px #1a1a1a,
+      0 0 0 5px #333,
+      0 0 0 7px #1e1e1e;
+  }
+  .tv-inner {
+    position: absolute; inset: 18px;
+    border-radius: 10px;
+    border: 2px solid #1a1a1a;
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.7), inset 0 0 8px rgba(0,255,65,0.04);
+  }
+  /* vinheta nos cantos da tela */
+  .tv-inner::after {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 8px;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.5) 100%);
+  }
+  /* rebites */
+  .rivet {
+    position: absolute; width: 10px; height: 10px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #555, #1a1a1a);
+    border: 1px solid #111; z-index: 5;
+  }
+  .rivet.rtl { top: 12px;    left: 12px; }
+  .rivet.rtr { top: 12px;    right: 12px; }
+  .rivet.rbl { bottom: 12px; left: 12px; }
+  .rivet.rbr { bottom: 12px; right: 12px; }
+  /* canal */
+  .tv-channel {
+    position: absolute; top: 16px; right: 22px;
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(0,0,0,0.85); border: 1px solid #333;
+    border-radius: 3px; padding: 2px 8px; z-index: 10;
+  }
+  .tv-ch-dot { width: 6px; height: 6px; border-radius: 50%; background: #00ff41; box-shadow: 0 0 5px #00ff41; animation: tvblink 1.5s ease-in-out infinite; }
+  @keyframes tvblink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+  .tv-ch-num { font-family: 'VT323', monospace; font-size: 16px; color: #00ff41; text-shadow: 0 0 5px #00ff41; line-height: 1; }
+
+
+</style>
+</head>
+<body>
+
+<!-- Elementos comuns (minimal / bordas simples) -->
+<div class="cam-frame"></div>
+<div class="corner tl"></div>
+<div class="corner tr"></div>
+<div class="corner bl"></div>
+<div class="corner br"></div>
+
+<!-- Circle -->
+<div class="circle-wrap">
+  <div class="ring-outer"></div>
+  <div class="ring"></div>
+  <div class="cdot n"></div>
+  <div class="cdot s"></div>
+  <div class="cdot e"></div>
+  <div class="cdot w"></div>
+</div>
+
+<!-- Hex HUD -->
+<div class="hex-wrap">
+  <div class="hud-frame"></div>
+  <div class="hud-inner"></div>
+  <div class="hc htl"><svg viewBox="0 0 34 34"><polyline points="0,22 0,0 22,0" fill="none" stroke="#00c8e0" stroke-width="2.5"/><circle cx="0" cy="0" r="3" fill="#00c8e0"/></svg></div>
+  <div class="hc htr"><svg viewBox="0 0 34 34"><polyline points="0,22 0,0 22,0" fill="none" stroke="#00c8e0" stroke-width="2.5"/><circle cx="0" cy="0" r="3" fill="#00c8e0"/></svg></div>
+  <div class="hc hbl"><svg viewBox="0 0 34 34"><polyline points="0,22 0,0 22,0" fill="none" stroke="#00c8e0" stroke-width="2.5"/><circle cx="0" cy="0" r="3" fill="#00c8e0"/></svg></div>
+  <div class="hc hbr"><svg viewBox="0 0 34 34"><polyline points="0,22 0,0 22,0" fill="none" stroke="#00c8e0" stroke-width="2.5"/><circle cx="0" cy="0" r="3" fill="#00c8e0"/></svg></div>
+  <div class="htick htick-t"></div>
+  <div class="htick htick-b"></div>
+  <div class="htick htick-l"></div>
+  <div class="htick htick-r"></div>
+</div>
+
+<!-- Retro TV -->
+<div class="tv-wrap">
+  <div class="tv-outer"></div>
+  <div class="tv-inner"></div>
+  <div class="rivet rtl"></div>
+  <div class="rivet rtr"></div>
+  <div class="rivet rbl"></div>
+  <div class="rivet rbr"></div>
+  <div class="tv-channel">
+    <div class="tv-ch-dot"></div>
+    <div class="tv-ch-num" id="tv-ch">CH 01</div>
+  </div>
+</div>
+
+<div id="nucleus-badge">Powered by Nucleus</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const ch     = params.get('ch') || '01';
+
+  document.getElementById('tv-ch').textContent = `CH ${ch.padStart(2,'0')}`;
+
+  // Badge FREE
+  fetch('/auth/plan').then(r => r.json()).then(d => {
+    if (!d.is_premium) document.getElementById('nucleus-badge').style.display = 'block';
+  }).catch(() => { document.getElementById('nucleus-badge').style.display = 'block'; });
+
+  // Carrega tema do overlay e escuta mudanças em tempo real
+  function _applyOverlayTheme(theme) {
+    document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
+    if (theme && theme !== 'minimal') document.body.classList.add('theme-' + theme);
+  }
+
+  (async () => {
+    try {
+      const d = await fetch('/overlay/themes').then(r => r.json());
+      _applyOverlayTheme(d.cam || 'minimal');
+    } catch {}
+  })();
+
+  // Custom styles
+  function _applyCustomCss(css) {
+    let el = document.getElementById('ov-custom-style');
+    if (!el) { el = document.createElement('style'); el.id = 'ov-custom-style'; document.head.appendChild(el); }
+    el.textContent = css || '';
+  }
+  (async () => {
+    try {
+      const d = await fetch('/overlay/custom-styles/cam').then(r => r.json());
+      _applyCustomCss(d.css || '');
+    } catch {}
+  })();
+
+  (function _connectOverlayEvents() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${proto}://${location.host}/ws/overlay-events`);
+    ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'theme_changed') _applyOverlayTheme(msg.themes.cam || 'minimal');
+        if (msg.type === 'styles_changed' && msg.key === 'cam') _applyCustomCss(msg.css || '');
+      } catch {}
+    };
+    ws.onclose = () => setTimeout(_connectOverlayEvents, 3000);
+  })();
+</script>
+</body>
+</html>

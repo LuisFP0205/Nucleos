@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Nucleus · Previews</title>
+<!-- Tema -->
+<script src="/static/theme.js"></script>
+<!-- Auth guard -->
+<style id="_ah">body{visibility:hidden!important}</style>
+<script src="/static/supabase.js"></script>
+<script src="/static/nucleus-auth.js"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0e0e10;
+    color: #efeff1;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    padding: 36px 32px 64px;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+  header a {
+    color: #adadb8; text-decoration: none; font-size: 13px;
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+    padding: 6px 14px; transition: background 0.15s, color 0.15s; white-space: nowrap;
+  }
+  header a:hover { background: rgba(255,255,255,0.07); color: #efeff1; }
+  header h1 { font-size: 22px; font-weight: 700; color: #efeff1; }
+  header h1 span { color: #9147ff; }
+
+  /* ── Grid ────────────────────────────────────────────────────── */
+  .grid { display: flex; flex-direction: column; gap: 32px; max-width: 860px; margin: 0 auto; }
+
+  /* ── Card ────────────────────────────────────────────────────── */
+  .card {
+    background: #18181b;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  /* ── Preview ─────────────────────────────────────────────────── */
+  .preview-area {
+    background: repeating-conic-gradient(#232326 0% 25%, #1c1c1f 0% 50%) 0 0 / 22px 22px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 32px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    position: relative;
+  }
+  .preview-area iframe {
+    border: none; background: transparent; display: block; pointer-events: none;
+  }
+  .preview-area iframe.interactive { pointer-events: auto; }
+
+  .frame-chat      { width: 420px; height: 420px; }
+  .frame-music     { width: 340px; height: 80px; }
+  .frame-viewers   { width: 100%; height: 300px; }
+  .frame-cam       { width: 320px; height: 180px; background: transparent; }
+  .frame-countdown { width: 480px; height: 200px; background: transparent; }
+
+  /* ── Toolbar de edição (viewers) ─────────────────────────────── */
+  .edit-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.02); gap: 8px; flex-wrap: wrap;
+  }
+  .edit-toolbar-left, .edit-toolbar-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .tb-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.12); margin: 0 2px; }
+  .tb-btn {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    color: #efeff1; border-radius: 6px; padding: 5px 11px; font-size: 11px;
+    cursor: pointer; transition: background 0.15s; white-space: nowrap;
+  }
+  .tb-btn:hover { background: rgba(255,255,255,0.14); }
+  .tb-btn.active { background: rgba(145,71,255,0.35); border-color: rgba(145,71,255,0.7); color: #c4a0ff; }
+  .tb-save { background: rgba(145,71,255,0.3); border-color: rgba(145,71,255,0.6); color: #c4a0ff; font-weight: 600; }
+  .tb-save:hover { background: rgba(145,71,255,0.5); }
+  .tb-layout-btns { display: none; }
+  .tb-layout-btns.visible { display: contents; }
+  .save-status { font-size: 11px; color: #4ade80; opacity: 0; transition: opacity 0.4s; }
+  .save-status.show { opacity: 1; }
+
+  /* ── Card info ───────────────────────────────────────────────── */
+  .card-info { padding: 24px 28px 28px; display: flex; flex-direction: column; gap: 18px; }
+  .card-title { font-size: 17px; font-weight: 700; color: #efeff1; margin-bottom: 6px; }
+  .card-desc { font-size: 13px; color: #adadb8; line-height: 1.6; }
+  .card-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .tag {
+    font-size: 11px; font-weight: 600;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 5px; padding: 4px 10px; color: #adadb8;
+  }
+  .tag.purple { color: #bf94ff; border-color: rgba(145,71,255,0.3); background: rgba(145,71,255,0.1); }
+  .tag.green  { color: #4caf7d; border-color: rgba(76,175,125,0.3); background: rgba(76,175,125,0.1); }
+
+  .dims-row { font-size: 12px; color: #6b6b78; }
+  .dims-row strong { color: #adadb8; }
+
+  .url-row {
+    display: flex; align-items: center; gap: 10px;
+    background: #0e0e10; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 9px; padding: 10px 14px;
+  }
+  .url-label {
+    font-size: 10px; color: #6b6b78; white-space: nowrap;
+    font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  }
+  .url-text {
+    flex: 1; font-size: 12px; font-family: 'Consolas', monospace;
+    color: #efeff1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .btn-copy {
+    background: rgba(145,71,255,0.2); border: 1px solid rgba(145,71,255,0.4);
+    color: #bf94ff; border-radius: 6px; padding: 5px 12px;
+    font-size: 11px; font-weight: 600; cursor: pointer; transition: background 0.15s; white-space: nowrap;
+  }
+  .btn-copy:hover  { background: rgba(145,71,255,0.35); }
+  .btn-copy.copied { background: rgba(76,175,125,0.2); border-color: rgba(76,175,125,0.4); color: #4caf7d; }
+
+  /* ── Modo claro ───────────────────────────────────────────────── */
+  html[data-theme="light"] body { background: #e8ecf6; color: #0d1229; }
+  html[data-theme="light"] header a { border-color: rgba(15,25,80,0.12); color: #5e6d96; }
+  html[data-theme="light"] header a:hover { background: rgba(0,0,0,0.06); color: #0d1229; }
+  html[data-theme="light"] header h1 { color: #0d1229; }
+  html[data-theme="light"] .section-title { color: #5e6d96; }
+  html[data-theme="light"] .preview-card {
+    background: #ffffff; border-color: rgba(15,25,80,0.1);
+    box-shadow: 0 2px 12px rgba(15,25,80,0.08);
+  }
+  html[data-theme="light"] .preview-label { color: #0d1229; }
+  html[data-theme="light"] .preview-url { background: #edf0fa; color: #5e6d96; border-color: rgba(15,25,80,0.1); }
+
+  /* ── Premium lock ────────────────────────────────────────────── */
+  .premium-lock-overlay {
+    position: absolute; inset: 0; z-index: 5;
+    background: rgba(8,9,18,.72); backdrop-filter: blur(3px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; cursor: pointer; text-decoration: none;
+    transition: background .2s;
+  }
+  .premium-lock-overlay:hover { background: rgba(8,9,18,.6); }
+  .pl-badge {
+    background: linear-gradient(135deg,#f59e0b,#ef4444);
+    color: #fff; font-size: 11px; font-weight: 800;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 5px 14px; border-radius: 20px;
+  }
+  .pl-hint { font-size: 12px; color: rgba(255,255,255,.6); }
+
+  /* ── Custom overlays section ─────────────────────────────────── */
+  .custom-section { max-width: 860px; margin: 32px auto 0; }
+  .custom-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .custom-title { font-size: 18px; font-weight: 700; color: #efeff1; }
+  .custom-subtitle { font-size: 13px; color: #adadb8; margin-top: 2px; }
+  .btn-new-overlay {
+    background: rgba(145,71,255,.18); border: 1px solid rgba(145,71,255,.45);
+    color: #bf94ff; border-radius: 8px; padding: 8px 18px;
+    font-size: 13px; font-weight: 700; font-family: inherit;
+    cursor: pointer; text-decoration: none;
+    display: flex; align-items: center; gap: 6px;
+    transition: background .15s;
+  }
+  .btn-new-overlay:hover { background: rgba(145,71,255,.3); }
+  .btn-new-overlay.locked { opacity: .5; cursor: default; }
+  .custom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 16px; }
+  .custom-card {
+    background: #18181b; border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px; overflow: hidden;
+    transition: border-color .2s;
+  }
+  .custom-card:hover { border-color: rgba(145,71,255,.4); }
+  .custom-card-preview {
+    height: 140px;
+    background: repeating-conic-gradient(#232326 0% 25%, #1c1c1f 0% 50%) 0 0 / 16px 16px;
+    position: relative; overflow: hidden;
+  }
+  .custom-card-preview iframe {
+    width: 100%; height: 100%; border: none; background: transparent; pointer-events: none;
+  }
+  .custom-card-body { padding: 14px 16px; }
+  .custom-card-name { font-size: 14px; font-weight: 700; color: #efeff1; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .custom-card-date { font-size: 11px; color: #6b6b78; margin-bottom: 12px; }
+  .custom-card-actions { display: flex; gap: 6px; }
+  .cc-btn {
+    flex: 1; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+    color: #adadb8; border-radius: 6px; font-size: 11px; font-weight: 600;
+    font-family: inherit; padding: 6px 0; cursor: pointer; text-decoration: none;
+    text-align: center; transition: background .15s, color .15s;
+  }
+  .cc-btn:hover { background: rgba(255,255,255,.12); color: #efeff1; }
+  .cc-btn.danger:hover { background: rgba(239,68,68,.15); color: #ef4444; border-color: rgba(239,68,68,.3); }
+  .custom-empty {
+    grid-column: 1/-1; text-align: center; padding: 40px;
+    color: #6b6b78; font-size: 14px;
+  }
+  .custom-premium-gate {
+    background: #18181b; border: 1px dashed rgba(245,158,11,.3);
+    border-radius: 12px; padding: 32px; text-align: center;
+  }
+  .cpg-icon { font-size: 32px; margin-bottom: 12px; }
+  .cpg-title { font-size: 16px; font-weight: 700; color: #efeff1; margin-bottom: 6px; }
+  .cpg-desc { font-size: 13px; color: #adadb8; margin-bottom: 20px; line-height: 1.6; }
+  .cpg-btn {
+    display: inline-block; background: linear-gradient(135deg,#f59e0b,#ef4444);
+    color: #fff; font-weight: 700; font-size: 13px; border: none;
+    border-radius: 8px; padding: 10px 28px; text-decoration: none;
+    cursor: pointer; transition: opacity .15s;
+  }
+  .cpg-btn:hover { opacity: .88; }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="/">← Dashboard</a>
+  <h1>Previews dos <span>Overlays</span></h1>
+  <a href="/themes">🎨 Temas de Overlay</a>
+</header>
+
+<div class="grid">
+
+  <!-- ── Chat ──────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="preview-area">
+      <iframe class="frame-chat" src="/overlay/chat?v=preview" scrolling="no" allowtransparency="true"></iframe>
+    </div>
+    <div class="card-info">
+      <div>
+        <div class="card-title">Chat</div>
+        <div class="card-desc">Mensagens em tempo real via WebSocket. Suporta emotes customizados da Twitch, Kick e YouTube. Novas mensagens entram pelo topo e somem após o tempo configurado.</div>
+      </div>
+      <div class="card-meta">
+        <span class="tag purple">WebSocket</span>
+        <span class="tag green">Twitch · YouTube · Kick</span>
+        <span class="tag">Auto-remove</span>
+      </div>
+      <div class="dims-row"><strong>Dimensões recomendadas:</strong> 420 × 600 px</div>
+      <div class="url-row">
+        <span class="url-label">URL</span>
+        <span class="url-text" id="url-chat">http://localhost:3000/overlay/chat</span>
+        <button class="btn-copy" onclick="copyUrl('url-chat', this)">Copiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Music ─────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="preview-area">
+      <iframe class="frame-music" src="/overlay/music?v=preview" scrolling="no" allowtransparency="true"></iframe>
+    </div>
+    <div class="card-info">
+      <div>
+        <div class="card-title">Now Playing</div>
+        <div class="card-desc">Exibe a música atual com capa do álbum, título e artista. Atualiza automaticamente via Windows GSMTC. Desaparece quando nada está tocando.</div>
+      </div>
+      <div class="card-meta">
+        <span class="tag purple">Polling 3s</span>
+        <span class="tag green">GSMTC</span>
+        <span class="tag">Spotify · YT Music · ...</span>
+      </div>
+      <div class="dims-row"><strong>Dimensões recomendadas:</strong> 340 × 80 px</div>
+      <div class="url-row">
+        <span class="url-label">URL</span>
+        <span class="url-text" id="url-music">http://localhost:3000/overlay/music</span>
+        <button class="btn-copy" onclick="copyUrl('url-music', this)">Copiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Viewers ────────────────────────────────────────────────── -->
+  <div class="card">
+
+    <!-- Toolbar de edição -->
+    <div class="edit-toolbar">
+      <div class="edit-toolbar-left">
+        <button class="tb-btn" id="btn-edit" onclick="viewersToggleEdit()">✏ Editar posições</button>
+        <div class="tb-sep tb-layout-btns" id="sep-layouts"></div>
+        <span class="tb-layout-btns">
+          <button class="tb-btn" onclick="viewersLayout('vertical')">⬇ Vertical</button>
+          <button class="tb-btn" onclick="viewersLayout('horizontal')">➡ Horizontal</button>
+          <button class="tb-btn" onclick="viewersLayout('staircase')">↗ Escada</button>
+          <button class="tb-btn" onclick="viewersReset()">↺ Reset</button>
+        </span>
+      </div>
+      <div class="edit-toolbar-right">
+        <span class="save-status" id="save-status"></span>
+        <button class="tb-btn tb-save tb-layout-btns" onclick="viewersSave()">💾 Salvar</button>
+      </div>
+    </div>
+
+    <div class="preview-area" style="padding:0; align-items:stretch; justify-content:stretch;">
+      <iframe class="frame-viewers" id="frame-viewers" src="/overlay/viewers" scrolling="no" allowtransparency="true"></iframe>
+    </div>
+
+    <div class="card-info">
+      <div>
+        <div class="card-title">Viewers</div>
+        <div class="card-desc">Contador de espectadores por plataforma com ponto de status animado. Cada plataforma aparece somente quando está ao vivo. Use <strong>✏ Editar posições</strong> para arrastar os componentes livremente.</div>
+      </div>
+      <div class="card-meta">
+        <span class="tag purple">Polling 15s</span>
+        <span class="tag green">Twitch · YouTube · Kick</span>
+        <span class="tag">Drag &amp; Drop</span>
+        <span class="tag">Auto-hide</span>
+      </div>
+      <div class="dims-row"><strong>Dimensões recomendadas:</strong> 200 × 130 px (ou livre)</div>
+      <div class="url-row">
+        <span class="url-label">URL</span>
+        <span class="url-text" id="url-viewers">http://localhost:3000/overlay/viewers</span>
+        <button class="btn-copy" onclick="copyUrl('url-viewers', this)">Copiar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── Camera ────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="preview-area">
+      <iframe class="frame-cam" src="/overlay/cam?v=preview" scrolling="no" allowtransparency="true"></iframe>
+    </div>
+    <div class="card-info">
+      <div>
+        <div class="card-title">Camera Frame</div>
+        <div class="card-desc">Frame decorativo para webcam. Adicione como Browser Source no OBS sobre a fonte de vídeo da câmera. Fundo 100% transparente — apenas a borda é visível.</div>
+      </div>
+      <div class="card-meta">
+        <span class="tag green">OBS Browser Source</span>
+        <span class="tag">Transparente</span>
+        <span class="tag purple">13 estilos</span>
+      </div>
+      <div class="dims-row"><strong>Dimensões recomendadas:</strong> mesmo tamanho da fonte de câmera</div>
+      <div class="url-row">
+        <span class="url-label">URL</span>
+        <span class="url-text" id="url-cam">http://localhost:3000/overlay/cam</span>
+        <button class="btn-copy" onclick="copyUrl('url-cam', this)">Copiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Countdown ─────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="preview-area">
+      <iframe class="frame-countdown" src="/overlay/countdown?v=preview" scrolling="no" allowtransparency="true"></iframe>
+    </div>
+    <div class="card-info">
+      <div>
+        <div class="card-title">Countdown</div>
+        <div class="card-desc">Timer de contagem regressiva para a live começar. Integrado com cenas OBS — ao terminar, troca automaticamente para a cena configurada.</div>
+      </div>
+      <div class="card-meta">
+        <span class="tag purple">OBS Auto-switch</span>
+        <span class="tag green">Configurável</span>
+        <span class="tag">8 temas</span>
+      </div>
+      <div class="dims-row"><strong>Dimensões recomendadas:</strong> 480 × 200 px</div>
+      <div class="url-row">
+        <span class="url-label">URL</span>
+        <span class="url-text" id="url-countdown">http://localhost:3000/overlay/countdown</span>
+        <button class="btn-copy" onclick="copyUrl('url-countdown', this)">Copiar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Custom Overlays ─────────────────────────────────────── -->
+<div class="custom-section" id="custom-section">
+  <div class="custom-header">
+    <div>
+      <div class="custom-title">Overlays Personalizados</div>
+      <div class="custom-subtitle">Crie overlays com HTML e CSS livremente — dados em tempo real via data-nucleus</div>
+    </div>
+    <a class="btn-new-overlay" id="btn-new-overlay" href="/overlay-editor">+ Criar Overlay</a>
+  </div>
+  <div id="custom-overlays-wrap">
+    <!-- Loaded by JS -->
+  </div>
+</div>
+
+<script>
+  NucleusAuth.guard();
+  // ── URLs dinâmicas ───────────────────────────────────────────────
+  (function () {
+    const base = window.location.origin;
+    const map = {
+      'url-chat':      base + '/overlay/chat',
+      'url-music':     base + '/overlay/music',
+      'url-viewers':   base + '/overlay/viewers',
+      'url-cam':       base + '/overlay/cam',
+      'url-countdown': base + '/overlay/countdown',
+    };
+    for (const [id, url] of Object.entries(map)) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = url;
+    }
+  })();
+
+  // ── Controles do Viewers overlay ─────────────────────────────────
+  let _editing = false;
+  const _frame = document.getElementById('frame-viewers');
+
+  function _msg(data) {
+    if (_frame && _frame.contentWindow) _frame.contentWindow.postMessage(data, '*');
+  }
+
+  function _setEditUI(editing) {
+    _editing = editing;
+    const btn = document.getElementById('btn-edit');
+    btn.textContent = editing ? '✓ Concluído' : '✏ Editar posições';
+    btn.classList.toggle('active', editing);
+    _frame.classList.toggle('interactive', editing);
+    document.querySelectorAll('.tb-layout-btns').forEach(el => el.classList.toggle('visible', editing));
+  }
+
+  function viewersToggleEdit() { _msg('toggle-edit'); _setEditUI(!_editing); }
+  function viewersLayout(name) { _msg({ type: 'apply-layout', name }); _showSaved('Layout aplicado'); }
+  function viewersReset()      { _msg('reset'); _showSaved('Posições resetadas'); }
+  function viewersSave()       { _msg('save');  _showSaved('Salvo!'); }
+
+  function _showSaved(msg) {
+    const el = document.getElementById('save-status');
+    el.textContent = msg; el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2000);
+  }
+
+  // ── Copiar URL ───────────────────────────────────────────────────
+  function copyUrl(id, btn) {
+    navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => {
+      btn.textContent = '✓ Copiado';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copied'); }, 2000);
+    });
+  }
+
+  // ── Premium gating & custom overlays ─────────────────────────────────
+  let _isPremium = false;
+
+  async function loadCustomSection() {
+    try {
+      const plan = await fetch('/auth/plan').then(r=>r.json()).catch(()=>({}));
+      _isPremium = plan.is_premium === true;
+    } catch {}
+
+    // Lock "Criar Overlay" button for free users
+    if (!_isPremium) {
+      const newBtn = document.getElementById('btn-new-overlay');
+      if (newBtn) { newBtn.classList.add('locked'); newBtn.removeAttribute('href'); newBtn.onclick = () => window.location.href = '/plans'; }
+    }
+
+    // Load custom overlays
+    const wrap = document.getElementById('custom-overlays-wrap');
+    if (!wrap) return;
+
+    if (!_isPremium) {
+      wrap.innerHTML = `<div class="custom-premium-gate">
+        <div class="cpg-icon">★</div>
+        <div class="cpg-title">Recurso Premium</div>
+        <div class="cpg-desc">Crie overlays totalmente personalizados com HTML e CSS.<br>Acesse dados em tempo real de chat, música e viewers.</div>
+        <a class="cpg-btn" href="/plans">Ver planos Premium</a>
+      </div>`;
+      return;
+    }
+
+    try {
+      const list = await fetch('/overlay/custom-list').then(r=>r.json());
+      if (!list.length) {
+        wrap.innerHTML = '<div class="custom-empty">Nenhum overlay criado ainda. Clique em <strong>+ Criar Overlay</strong> para começar.</div>';
+        return;
+      }
+      const grid = document.createElement('div');
+      grid.className = 'custom-grid';
+      list.forEach(ov => {
+        const url = window.location.origin + '/overlay/custom/' + ov.id;
+        const dt  = new Date(ov.updated_at || ov.created_at).toLocaleDateString('pt-BR');
+        const card = document.createElement('div');
+        card.className = 'custom-card';
+        card.innerHTML = `
+          <div class="custom-card-preview">
+            <iframe src="/overlay/custom/${ov.id}" scrolling="no" allowtransparency="true"></iframe>
+          </div>
+          <div class="custom-card-body">
+            <div class="custom-card-name">${ov.name}</div>
+            <div class="custom-card-date">Editado ${dt}</div>
+            <div class="custom-card-actions">
+              <a class="cc-btn" href="/overlay-editor?id=${ov.id}">✏ Editar</a>
+              <button class="cc-btn" onclick="copyCustomUrl('${url}', this)">⎘ Copiar URL</button>
+              <button class="cc-btn danger" onclick="deleteCustomOverlay('${ov.id}', this)">✕</button>
+            </div>
+          </div>`;
+        grid.appendChild(card);
+      });
+      wrap.appendChild(grid);
+    } catch {
+      wrap.innerHTML = '<div class="custom-empty">Erro ao carregar overlays personalizados.</div>';
+    }
+  }
+
+  function copyCustomUrl(url, btn) {
+    navigator.clipboard.writeText(url).then(() => {
+      btn.textContent = '✓ Copiado';
+      setTimeout(() => { btn.textContent = '⎘ Copiar URL'; }, 2000);
+    });
+  }
+
+  async function deleteCustomOverlay(id, btn) {
+    if (!confirm('Deletar este overlay?')) return;
+    await fetch('/overlay/custom-delete/' + id, { method: 'DELETE' });
+    btn.closest('.custom-card').remove();
+  }
+
+  loadCustomSection();
+
+</script>
+</body>
+</html>

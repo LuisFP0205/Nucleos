@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Overlays — Nucleus</title>
+<script src="/static/supabase.js"></script>
+<script src="/static/nucleus-auth.js"></script>
+<style id="_ah">body{visibility:hidden!important}</style>
+<style>
+.nk-page { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+.nk-titlebar {
+  height:40px; min-height:40px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; border-bottom:1px solid var(--border); background:var(--wrap); flex-shrink:0;
+}
+.nk-title { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.nk-body  { flex:1; overflow-y:auto; }
+
+/* ── Card grid ── */
+.ov-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));
+  gap:16px; padding:20px;
+}
+
+.ov-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:12px; overflow:hidden;
+  display:flex; flex-direction:column;
+  transition:border-color .2s, box-shadow .2s;
+}
+.ov-card:hover { border-color:var(--border2); box-shadow:0 8px 32px rgba(0,0,0,.4); }
+
+/* Thumbnail preview area */
+.ov-thumb {
+  position:relative; overflow:hidden; flex-shrink:0;
+  background:#060912;
+  cursor:pointer;
+}
+/* checkerboard pattern to show transparency */
+.ov-thumb::before {
+  content:''; position:absolute; inset:0; z-index:0;
+  background-image:
+    linear-gradient(45deg, #0d0f1a 25%, transparent 25%),
+    linear-gradient(-45deg, #0d0f1a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #0d0f1a 75%),
+    linear-gradient(-45deg, transparent 75%, #0d0f1a 75%);
+  background-size:16px 16px;
+  background-position:0 0, 0 8px, 8px -8px, -8px 0;
+  opacity:.5;
+}
+/* dim overlay on hover to show click affordance */
+.ov-thumb-hover {
+  position:absolute; inset:0; z-index:2;
+  background:rgba(0,0,0,0); transition:background .2s;
+}
+.ov-card:hover .ov-thumb-hover { background:rgba(0,0,0,.25); }
+.ov-thumb-iframe-wrap {
+  position:relative; z-index:1;
+  width:100%; height:180px;
+  overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.ov-thumb-iframe-wrap iframe {
+  flex-shrink:0;
+  transform-origin:center center;
+  border:none; pointer-events:none;
+}
+
+/* Card body */
+.ov-card-body { padding:14px 16px; flex:1; display:flex; flex-direction:column; gap:10px; }
+.ov-card-top { display:flex; align-items:flex-start; gap:10px; }
+.ov-card-ico {
+  width:34px; height:34px; flex-shrink:0;
+  background:var(--card2); border:1px solid var(--border);
+  border-radius:8px; display:flex; align-items:center; justify-content:center;
+  font-size:16px;
+}
+.ov-card-info { flex:1; min-width:0; }
+.ov-card-name { font-size:13px; font-weight:700; color:var(--text); }
+.ov-card-desc { font-size:11px; color:var(--muted); margin-top:2px; }
+
+.ov-tags { display:flex; gap:5px; flex-wrap:wrap; }
+.ov-tag {
+  font-size:9.5px; font-weight:700; letter-spacing:.4px;
+  padding:2px 7px; border-radius:4px; text-transform:uppercase;
+  background:var(--card2); color:var(--muted); border:1px solid var(--border);
+}
+.ov-tag.cyan   { background:rgba(0,200,224,.1);  color:var(--cyan);   border-color:rgba(0,200,224,.2); }
+.ov-tag.purple { background:rgba(145,71,255,.1); color:var(--purple); border-color:rgba(145,71,255,.2); }
+.ov-tag.green  { background:rgba(34,197,94,.1);  color:var(--green);  border-color:rgba(34,197,94,.2); }
+
+/* URL row */
+.ov-url-row { display:flex; align-items:center; gap:5px; }
+.ov-url-val {
+  flex:1; font-size:10px; font-family:var(--mono); color:var(--muted);
+  background:var(--bg); border:1px solid var(--border); border-radius:5px;
+  padding:4px 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.copy-btn {
+  height:26px; width:28px; display:flex; align-items:center; justify-content:center;
+  background:var(--card2); border:1px solid var(--border); color:var(--muted);
+  cursor:pointer; font-size:12px; flex-shrink:0; border-radius:5px;
+  transition:color .12s, border-color .12s;
+}
+.copy-btn:hover { color:var(--text); border-color:var(--border2); }
+.copy-btn.copied { color:var(--green); border-color:rgba(34,197,94,.3); }
+
+/* Card footer */
+.ov-card-footer {
+  padding:10px 16px; border-top:1px solid var(--border);
+  display:flex; gap:6px; align-items:center; flex-shrink:0;
+}
+.ov-size-badge {
+  flex:1; font-size:10px; font-family:var(--mono); color:var(--dim);
+  display:flex; align-items:center; gap:4px;
+}
+
+/* Countdown panel */
+.cd-panel {
+  border-top:1px solid var(--border); background:var(--wrap);
+  padding:16px; display:none; flex-shrink:0;
+}
+.cd-panel.open { display:block; }
+.cd-panel-hd { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; }
+.cd-display {
+  font-size:48px; font-weight:800; font-family:var(--mono); color:var(--text);
+  letter-spacing:-2px; text-align:center; margin:8px 0 12px; transition:color .3s;
+}
+.cd-display.running  { color:var(--cyan); }
+.cd-display.finished { color:var(--green); }
+.cd-controls { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; }
+.cd-field { display:flex; flex-direction:column; gap:4px; }
+.cd-field label { font-size:10px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.cd-field input { height:30px; font-size:12px; }
+.cd-field input[type=number] { width:80px; }
+.cd-field input[type=text]   { width:160px; }
+
+/* Preview modal */
+.prev-modal {
+  display:none; position:fixed; inset:0; z-index:9999;
+  align-items:center; justify-content:center; padding:20px;
+}
+.prev-modal.open { display:flex; }
+.prev-backdrop {
+  position:absolute; inset:0;
+  background:rgba(0,0,0,.85); backdrop-filter:blur(10px);
+}
+.prev-box {
+  position:relative; z-index:1;
+  background:var(--wrap); border:1px solid var(--border2);
+  border-radius:12px; overflow:hidden;
+  width:min(960px, 92vw);
+  box-shadow:0 32px 80px rgba(0,0,0,.9);
+  display:flex; flex-direction:column;
+}
+.prev-hd {
+  height:44px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 14px; border-bottom:1px solid var(--border); background:var(--card);
+}
+.prev-hd-title { font-size:12px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; }
+.prev-hd-badge {
+  font-size:9px; font-weight:700; color:var(--cyan);
+  background:rgba(0,200,224,.12); border:1px solid rgba(0,200,224,.25);
+  border-radius:4px; padding:2px 6px; text-transform:uppercase; letter-spacing:.5px;
+}
+.prev-hd-right { display:flex; gap:6px; align-items:center; }
+.prev-stage { position:relative; overflow:hidden; flex-shrink:0; background:#000; }
+.prev-stage iframe {
+  position:absolute; top:0; left:0;
+  width:1920px; height:1080px;
+  transform-origin:top left; border:none;
+}
+.prev-footer {
+  padding:10px 14px; border-top:1px solid var(--border);
+  background:var(--card); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.prev-url { font-size:10px; font-family:var(--mono); color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+
+/* Premium upsell */
+.ov-premium {
+  margin:4px 20px 20px;
+  border:1px dashed rgba(145,71,255,.35);
+  border-radius:12px; padding:28px 24px;
+  background:rgba(145,71,255,.04);
+  text-align:center;
+}
+.ov-premium-icon { font-size:28px; margin-bottom:10px; }
+.ov-premium-title { font-size:14px; font-weight:700; color:var(--text); }
+.ov-premium-sub { font-size:12px; color:var(--muted); margin-top:4px; margin-bottom:16px; line-height:1.6; }
+
+/* ── Plans modal ── */
+.nk-modal-overlay {
+  position:fixed; inset:0; z-index:10000;
+  background:rgba(0,0,0,.65); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.nk-modal-overlay.open { opacity:1; pointer-events:all; }
+.nk-modal {
+  background:var(--wrap); border:1px solid var(--border); border-radius:var(--r3);
+  width:560px; max-width:calc(100vw - 32px); padding:24px;
+  transform:translateY(12px); transition:transform .2s; position:relative;
+}
+.nk-modal-overlay.open .nk-modal { transform:translateY(0); }
+.nk-modal-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.nk-modal-title { font-size:14px; font-weight:700; color:var(--text); }
+.nk-modal-close {
+  width:28px; height:28px; border-radius:var(--r1); border:1px solid var(--border);
+  background:none; color:var(--muted); cursor:pointer; font-size:16px;
+  display:flex; align-items:center; justify-content:center; transition:color .12s, border-color .12s;
+}
+.nk-modal-close:hover { color:var(--text); border-color:var(--border2); }
+.plan-card {
+  background:var(--bg); border:1px solid var(--border); border-radius:var(--r2);
+  padding:14px; display:flex; flex-direction:column; position:relative;
+}
+.plan-card.premium { border-color:rgba(145,71,255,.4); background:rgba(145,71,255,.04); }
+.plan-badge-top {
+  position:absolute; top:-10px; left:50%; transform:translateX(-50%);
+  background:var(--purple); color:#fff; font-size:9px; font-weight:700;
+  letter-spacing:.8px; padding:2px 8px; border-radius:20px;
+}
+.plan-card-hd { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.plan-card-ico { font-size:20px; }
+.plan-card-name { font-size:13px; font-weight:700; color:var(--text); }
+.plan-card-price { font-size:18px; font-weight:800; color:var(--cyan); margin-top:2px; }
+.plan-card-price span { font-size:11px; color:var(--muted); font-weight:400; }
+.plan-feat-list { list-style:none; display:flex; flex-direction:column; gap:5px; flex:1; }
+.plan-feat-list li { font-size:11.5px; color:var(--muted); }
+.plan-feat-list li.dim { color:var(--dim); }
+.plan-card.premium .plan-feat-list li:not(.dim) { color:var(--text); }
+
+/* ── Themes modal ── */
+.themes-modal {
+  display:none; position:fixed; inset:0; z-index:9998;
+  align-items:center; justify-content:center; padding:20px;
+}
+.themes-modal.open { display:flex; }
+.themes-backdrop {
+  position:absolute; inset:0;
+  background:rgba(0,0,0,.8); backdrop-filter:blur(10px);
+}
+.themes-box {
+  position:relative; z-index:1;
+  background:var(--wrap); border:1px solid var(--border2);
+  border-radius:14px; overflow:hidden;
+  width:min(980px, 94vw); height:min(88vh, 820px);
+  box-shadow:0 32px 80px rgba(0,0,0,.9);
+  display:flex; flex-direction:column;
+}
+.themes-box-hd {
+  height:44px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; border-bottom:1px solid var(--border);
+  background:var(--card);
+}
+.themes-box-title { font-size:12px; font-weight:700; color:var(--text); }
+.themes-box iframe {
+  flex:1; border:none; width:100%;
+}
+
+/* OBS instructions */
+.obs-steps {
+  padding:12px 20px; border-top:1px solid var(--border);
+  background:var(--wrap); flex-shrink:0;
+}
+.obs-steps-title { font-size:10px; font-weight:700; color:var(--dim); text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px; }
+.obs-steps-list { display:flex; gap:20px; flex-wrap:wrap; }
+.obs-step { display:flex; align-items:flex-start; gap:7px; font-size:11px; color:var(--muted); }
+.obs-step-n {
+  width:18px; height:18px; border-radius:50%;
+  background:rgba(0,200,224,.1); border:1px solid rgba(0,200,224,.2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:700; color:var(--cyan); flex-shrink:0; font-family:var(--mono);
+}
+</style>
+</head>
+<body>
+<script src="/static/nucleus-sidebar.js"></script>
+<div class="nk-page">
+
+  <div class="nk-titlebar">
+    <span class="nk-title">Overlays</span>
+    <button class="btn btn-ghost btn-sm" onclick="openThemes()">🎨 Temas</button>
+  </div>
+
+  <!-- Themes modal -->
+  <div class="themes-modal" id="themes-modal">
+    <div class="themes-backdrop" onclick="closeThemes()"></div>
+    <div class="themes-box">
+      <div class="themes-box-hd">
+        <span class="themes-box-title">🎨 Temas de Overlay</span>
+        <button class="btn btn-ghost btn-sm" onclick="closeThemes()">✕ Fechar</button>
+      </div>
+      <iframe id="themes-iframe" src="" allow="autoplay"></iframe>
+    </div>
+  </div>
+
+  <div class="nk-body">
+
+    <!-- Cards grid -->
+    <div class="ov-grid" id="ov-grid">
+      <!-- filled by JS -->
+    </div>
+
+    <!-- Premium upsell -->
+    <div class="ov-premium">
+      <div class="ov-premium-icon">★</div>
+      <div class="ov-premium-title">Overlays Personalizados</div>
+      <div class="ov-premium-sub">Crie overlays com seu branding, cores e layout exclusivos.<br>Disponível no plano Premium.</div>
+      <button class="btn btn-primary" onclick="openPlansModal()">Ver planos Premium</button>
+    </div>
+
+  </div>
+
+  <!-- Plans modal -->
+  <div class="nk-modal-overlay" id="plans-modal" onclick="if(event.target===this)closePlansModal()">
+    <div class="nk-modal">
+      <div class="nk-modal-hd">
+        <span class="nk-modal-title">Escolha seu plano</span>
+        <button class="nk-modal-close" onclick="closePlansModal()">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="plan-card">
+          <div class="plan-card-hd">
+            <div class="plan-card-ico">⭐</div>
+            <div>
+              <div class="plan-card-name">Free</div>
+              <div class="plan-card-price">R$0<span>/mês</span></div>
+            </div>
+          </div>
+          <ul class="plan-feat-list">
+            <li>✓ 3 Plataformas</li>
+            <li>✓ Overlays básicos</li>
+            <li>✓ 2 Temas</li>
+            <li>✓ Analytics 7 dias</li>
+            <li>✓ 10 Comandos</li>
+            <li>✓ Auto-switch OBS</li>
+            <li class="dim">✗ Editor visual</li>
+            <li class="dim">✗ Suporte prioritário</li>
+          </ul>
+          <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:12px" onclick="closePlansModal()">Plano atual</button>
+        </div>
+        <div class="plan-card premium">
+          <div class="plan-badge-top">RECOMENDADO</div>
+          <div class="plan-card-hd">
+            <div class="plan-card-ico">✨</div>
+            <div>
+              <div class="plan-card-name">Premium</div>
+              <div class="plan-card-price">R$19<span>/mês</span></div>
+            </div>
+          </div>
+          <ul class="plan-feat-list">
+            <li>✓ 3 Plataformas</li>
+            <li>✓ Todos os overlays + custom</li>
+            <li>✓ Temas ilimitados</li>
+            <li>✓ Analytics 90 dias</li>
+            <li>✓ Comandos ilimitados</li>
+            <li>✓ Auto-switch OBS</li>
+            <li>✓ Editor visual</li>
+            <li>✓ Suporte prioritário</li>
+          </ul>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:12px" onclick="NucleusToast('Em breve!','info')">Fazer upgrade →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Countdown control panel (slides up from bottom) -->
+  <div class="cd-panel" id="cd-panel">
+    <div class="cd-panel-hd">
+      <span>⏱ Controle do Countdown</span>
+      <button class="btn btn-ghost btn-sm" onclick="toggleCDPanel()">✕ Fechar</button>
+    </div>
+    <div class="cd-display" id="cd-display">00:00</div>
+    <div class="cd-controls">
+      <div class="cd-field">
+        <label>Minutos</label>
+        <input class="nk-input" type="number" id="cd-min" value="5" min="0" max="999">
+      </div>
+      <div class="cd-field">
+        <label>Segundos</label>
+        <input class="nk-input" type="number" id="cd-sec" value="0" min="0" max="59">
+      </div>
+      <div class="cd-field">
+        <label>Mensagem (opcional)</label>
+        <input class="nk-input" type="text" id="cd-msg" placeholder="Ex: A live começa já!">
+      </div>
+      <div class="cd-field">
+        <label>Cena OBS ao terminar</label>
+        <select class="nk-input" id="cd-scene" style="width:160px"><option value="">— nenhuma —</option></select>
+      </div>
+      <div style="display:flex;gap:6px;align-self:flex-end">
+        <button class="btn btn-primary" id="cd-btn-start" onclick="cdStart()">▶ Iniciar</button>
+        <button class="btn btn-ghost"   id="cd-btn-pause" onclick="cdPause()" style="display:none">⏸ Pausar</button>
+        <button class="btn btn-danger"  id="cd-btn-stop"  onclick="cdStop()"  style="display:none">■ Parar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview modal -->
+  <div class="prev-modal" id="prev-modal">
+    <div class="prev-backdrop" onclick="closePreview()"></div>
+    <div class="prev-box">
+      <div class="prev-hd">
+        <div class="prev-hd-title">
+          <span id="prev-title">Preview</span>
+          <span class="prev-hd-badge">1920×1080</span>
+        </div>
+        <div class="prev-hd-right">
+          <a class="btn btn-ghost btn-sm" id="prev-open-link" href="#" target="_blank">Abrir ↗</a>
+          <button class="btn btn-ghost btn-sm" onclick="closePreview()">✕ Fechar</button>
+        </div>
+      </div>
+      <div class="prev-stage" id="prev-stage">
+        <iframe id="prev-iframe" src="" allow="autoplay"></iframe>
+      </div>
+      <div class="prev-footer">
+        <span class="prev-url" id="prev-url"></span>
+        <button class="btn btn-ghost btn-sm" onclick="copyPreviewURL()">⎘ Copiar URL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OBS instructions bar -->
+  <div class="obs-steps">
+    <div class="obs-steps-title">Como adicionar no OBS</div>
+    <div class="obs-steps-list">
+      <div class="obs-step"><div class="obs-step-n">1</div><span>Fontes → <strong style="color:var(--text)">+</strong> → <strong style="color:var(--text)">Browser</strong></span></div>
+      <div class="obs-step"><div class="obs-step-n">2</div><span>Cole a URL no campo <strong style="color:var(--text)">URL</strong></span></div>
+      <div class="obs-step"><div class="obs-step-n">3</div><span>Largura <strong style="color:var(--cyan)">1920</strong> × Altura <strong style="color:var(--cyan)">1080</strong></span></div>
+      <div class="obs-step"><div class="obs-step-n">4</div><span>Ative <strong style="color:var(--text)">"Atualizar ao ativar cena"</strong></span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+NucleusAuth.guard();
+(function(){
+  const BASE=location.origin;
+  const OVERLAYS=[
+    {
+      id:"chat", icon:"💬", name:"Chat", desc:"Mensagens em tempo real via WebSocket",
+      path:"/overlay/chat", w:420, h:600, fill:true,
+      tags:[{l:"WebSocket",c:"cyan"},{l:"Tempo Real",c:"green"},{l:"Multi-plataforma",c:"purple"}]
+    },
+    {
+      id:"music", icon:"♪", name:"Música", desc:"Música detectada automaticamente via GSMTC",
+      path:"/overlay/music", w:340, h:90, fill:true,
+      tags:[{l:"GSMTC",c:"cyan"},{l:"Auto-detecção",c:"green"},{l:"Windows",c:""}]
+    },
+    {
+      id:"viewers", icon:"◈", name:"Stats", desc:"Espectadores ao vivo de todas as plataformas",
+      path:"/overlay/viewers", w:200, h:130,
+      tags:[{l:"Multi-plataforma",c:"purple"},{l:"Ao Vivo",c:"green"},{l:"Auto-atualiza",c:"cyan"}]
+    },
+    {
+      id:"cam", icon:"◉", name:"Câmera", desc:"Moldura e estilo para sua webcam",
+      path:"/overlay/cam", w:400, h:300,
+      tags:[{l:"Moldura",c:""},{l:"Customizável",c:"purple"}]
+    },
+    {
+      id:"countdown", icon:"⏱", name:"Countdown", desc:"Contagem regressiva com troca de cena",
+      path:"/overlay/countdown", w:480, h:380,
+      tags:[{l:"Configurável",c:"cyan"},{l:"OBS Cena",c:"purple"}],
+      extra:true
+    },
+  ];
+
+  const grid=document.getElementById("ov-grid");
+
+  // Render cards
+  OVERLAYS.forEach(o=>{
+    const url=BASE+o.path;
+    const tags=o.tags.map(t=>`<span class="ov-tag ${t.c}">${t.l}</span>`).join("");
+    const extraFooterBtn=o.extra
+      ?`<button class="btn btn-ghost btn-sm" onclick="toggleCDPanel()">⏱ Configurar</button>`
+      :"";
+
+    const card=document.createElement("div");
+    card.className="ov-card";
+    card.innerHTML=`
+      <div class="ov-thumb" onclick="openPreview('${o.path}','${o.name}')">
+        <div class="ov-thumb-iframe-wrap" id="wrap-${o.id}">
+          <iframe id="ifr-${o.id}" src="${o.path}" allow="autoplay" style="width:${o.w}px;height:${o.h}px"></iframe>
+        </div>
+        <div class="ov-thumb-hover"></div>
+      </div>
+      <div class="ov-card-body">
+        <div class="ov-card-top">
+          <div class="ov-card-ico">${o.icon}</div>
+          <div class="ov-card-info">
+            <div class="ov-card-name">${o.name}</div>
+            <div class="ov-card-desc">${o.desc}</div>
+          </div>
+        </div>
+        <div class="ov-tags">${tags}</div>
+        <div class="ov-url-row">
+          <span class="ov-url-val" title="${url}">${url}</span>
+          <button class="copy-btn" id="cpbtn-${o.id}" onclick="copyURL('${url}','${o.id}')" title="Copiar URL">⎘</button>
+        </div>
+      </div>
+      <div class="ov-card-footer">
+        <span class="ov-size-badge">⬚ ${o.w} × ${o.h} px</span>
+        ${extraFooterBtn}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Scale + center iframes to fit within the fixed-height preview box
+  const OV_MAP=Object.fromEntries(OVERLAYS.map(o=>[o.id,o]));
+  function scaleAllIframes(){
+    document.querySelectorAll("[id^='wrap-']").forEach(wrap=>{
+      const id=wrap.id.replace("wrap-","");
+      const ifr=document.getElementById("ifr-"+id);
+      const ov=OV_MAP[id];
+      if(!ifr||!ov)return;
+      const cw=wrap.offsetWidth, ch=wrap.offsetHeight;
+      // fill: scale by width (clips vertically) — fit: scale to contain entirely
+      const scale=ov.fill ? cw/ov.w : Math.min(cw/ov.w, ch/ov.h);
+      ifr.style.transform=`scale(${scale})`;
+    });
+  }
+  document.querySelectorAll("[id^='ifr-']").forEach(ifr=>ifr.addEventListener("load",scaleAllIframes));
+  requestAnimationFrame(scaleAllIframes);
+
+  window.addEventListener("resize",()=>{ scaleAllIframes(); _scalePreview(); });
+
+  // ── Countdown control ──
+  let _cdWs=null;
+  async function loadCDScenes(){
+    try{
+      const r=await fetch("/obs/scenes");if(!r.ok)return;
+      const scenes=await r.json();
+      const sel=document.getElementById("cd-scene");
+      const cur=sel.value;
+      sel.innerHTML='<option value="">— nenhuma —</option>';
+      scenes.forEach(s=>{const o=document.createElement("option");o.value=o.textContent=s;sel.appendChild(o);});
+      if(cur)sel.value=cur;
+    }catch(_){}
+  }
+  window.toggleCDPanel=()=>{
+    const p=document.getElementById("cd-panel");
+    p.classList.toggle("open");
+    if(p.classList.contains("open")){cdConnect();loadCDScenes();}
+  };
+  function cdConnect(){
+    if(_cdWs&&_cdWs.readyState<2)return;
+    _cdWs=new WebSocket(`${location.protocol==="https:"?"wss":"ws"}://${location.host}/ws/countdown`);
+    _cdWs.onmessage=e=>{try{cdApply(JSON.parse(e.data));}catch(_){}};
+    _cdWs.onclose=()=>setTimeout(()=>{if(document.getElementById("cd-panel").classList.contains("open"))cdConnect();},3000);
+  }
+  function cdApply(s){
+    const disp=document.getElementById("cd-display");
+    disp.textContent=s.display||"00:00";
+    disp.className="cd-display"+(s.running&&!s.paused?" running":s.finished?" finished":"");
+    document.getElementById("cd-btn-start").style.display=s.running?"none":"";
+    document.getElementById("cd-btn-pause").style.display=s.running?"":"none";
+    document.getElementById("cd-btn-stop").style.display=s.running?"":"none";
+    if(s.paused)document.getElementById("cd-btn-pause").textContent="▶ Retomar";
+    else document.getElementById("cd-btn-pause").textContent="⏸ Pausar";
+  }
+  window.cdStart=async()=>{
+    const min=parseInt(document.getElementById("cd-min").value)||0;
+    const sec=parseInt(document.getElementById("cd-sec").value)||0;
+    const dur=min*60+sec;
+    if(!dur){NucleusToast("Defina a duração","error");return;}
+    const r=await fetch("/countdown/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+      duration:dur,
+      message:document.getElementById("cd-msg").value||"",
+      target_scene:document.getElementById("cd-scene").value||""
+    })});
+    if(!r.ok)NucleusToast("Erro ao iniciar","error");
+  };
+  window.cdPause=()=>fetch("/countdown/pause",{method:"POST"});
+  window.cdStop=async()=>{
+    await fetch("/countdown/stop",{method:"POST"});
+    NucleusToast("Countdown parado","info");
+  };
+  fetch("/countdown/state").then(r=>r.json()).then(cdApply).catch(()=>{});
+
+  // ── Preview modal ──
+  let _prevURL="";
+  function _scalePreview(){
+    const stage=document.getElementById("prev-stage");
+    const iframe=document.getElementById("prev-iframe");
+    if(!stage||!iframe)return;
+    const w=stage.offsetWidth;
+    const scale=w/1920;
+    iframe.style.transform=`scale(${scale})`;
+    stage.style.height=(1080*scale)+"px";
+  }
+  window.openPreview=(path,name)=>{
+    _prevURL=location.origin+path;
+    document.getElementById("prev-title").textContent=name;
+    document.getElementById("prev-open-link").href=path;
+    document.getElementById("prev-url").textContent=_prevURL;
+    document.getElementById("prev-iframe").src=path;
+    document.getElementById("prev-modal").classList.add("open");
+    requestAnimationFrame(_scalePreview);
+  };
+  window.closePreview=()=>{
+    document.getElementById("prev-modal").classList.remove("open");
+    document.getElementById("prev-iframe").src="";
+  };
+  window.copyPreviewURL=async()=>{
+    try{await navigator.clipboard.writeText(_prevURL);}catch(_){
+      const ta=document.createElement("textarea");ta.value=_prevURL;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();
+    }
+    NucleusToast("URL copiada","ok",1500);
+  };
+  window.openPlansModal=()=>document.getElementById("plans-modal").classList.add("open");
+  window.closePlansModal=()=>document.getElementById("plans-modal").classList.remove("open");
+
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"){ closePreview(); closeThemes(); closePlansModal(); }
+  });
+
+  // ── Themes modal ──
+  window.openThemes=()=>{
+    document.getElementById("themes-iframe").src="/themes?embedded=1";
+    document.getElementById("themes-modal").classList.add("open");
+  };
+  window.closeThemes=()=>{
+    document.getElementById("themes-modal").classList.remove("open");
+    document.getElementById("themes-iframe").src="";
+  };
+
+  // ── Copy URL ──
+  window.copyURL=async(url,id)=>{
+    try{await navigator.clipboard.writeText(url);}catch(_){
+      const ta=document.createElement("textarea");ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();
+    }
+    const btn=document.getElementById("cpbtn-"+id);
+    if(btn){btn.classList.add("copied");btn.textContent="✓";setTimeout(()=>{btn.classList.remove("copied");btn.textContent="⎘";},1800);}
+    NucleusToast("URL copiada","ok",1500);
+  };
+})();
+</script>
+</body>
+</html>

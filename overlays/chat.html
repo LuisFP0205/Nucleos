@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Chat Overlay</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Bungee&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 15px;
+    overflow: hidden;
+    width: 420px;
+  }
+
+  /* ── Mensagens ─────────────────────────────────────────────────── */
+
+  #messages {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .msg {
+    background: rgba(0, 0, 0, 0.65);
+    border-radius: 8px;
+    padding: 7px 10px;
+    border-left: 3px solid #9B9B9B;
+    word-break: break-word;
+    overflow: hidden;
+    animation: slideDown 0.25s ease-out;
+    transition:
+      opacity      0.4s ease,
+      max-height   0.4s ease,
+      padding      0.4s ease,
+      margin       0.4s ease;
+    max-height: 200px;
+    opacity: 1;
+  }
+
+  .msg.removing {
+    opacity: 0;
+    max-height: 0 !important;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  .msg.twitch  { border-left-color: #9147ff; }
+  .msg.youtube { border-left-color: #ff0000; }
+  .msg.kick    { border-left-color: #00e701; }
+
+  .msg-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 3px;
+  }
+
+  .platform-icon {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+    opacity: 0.85;
+    flex-shrink: 0;
+  }
+
+  .username { font-weight: bold; font-size: 13px; }
+
+  .first-time-badge {
+    font-size: 9px; font-weight: 700; letter-spacing: .04em;
+    background: rgba(245,158,11,0.2); color: #f59e0b;
+    border: 1px solid rgba(245,158,11,0.35);
+    border-radius: 4px; padding: 1px 5px; white-space: nowrap;
+    vertical-align: middle; margin-left: 4px;
+  }
+
+  .msg-text { color: #ffffff; line-height: 1.4; }
+
+  .chat-emote {
+    height: 22px;
+    width: auto;
+    vertical-align: middle;
+    display: inline-block;
+    margin: 0 1px;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: TWITCH — bolhas por mensagem, ícone redondo
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-twitch .msg {
+    background: rgba(18, 8, 36, 0.88);
+    border-left: none;
+    border-radius: 14px;
+    padding: 9px 13px;
+  }
+  body.theme-twitch .msg.twitch  { box-shadow: 0 0 0 1px rgba(145,71,255,0.35); }
+  body.theme-twitch .msg.youtube { box-shadow: 0 0 0 1px rgba(255,0,0,0.35); }
+  body.theme-twitch .msg.kick    { box-shadow: 0 0 0 1px rgba(0,231,1,0.35); }
+  body.theme-twitch .platform-icon {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    padding: 2px;
+  }
+  body.theme-twitch .username { font-size: 14px; }
+  body.theme-twitch .msg-text { color: #ddd; font-size: 14px; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: NEON — preto, glow por plataforma
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-neon .msg {
+    background: rgba(0, 0, 0, 0.85);
+    border-left: none;
+    border-radius: 8px;
+    border: 1px solid rgba(0,200,224,0.3);
+  }
+  body.theme-neon .msg.twitch  { border-color: rgba(145,71,255,0.6); box-shadow: 0 0 10px rgba(145,71,255,0.2), inset 0 0 12px rgba(145,71,255,0.05); }
+  body.theme-neon .msg.youtube { border-color: rgba(255,60,60,0.6);  box-shadow: 0 0 10px rgba(255,60,60,0.2),  inset 0 0 12px rgba(255,60,60,0.05); }
+  body.theme-neon .msg.kick    { border-color: rgba(0,231,1,0.6);    box-shadow: 0 0 10px rgba(0,231,1,0.2),    inset 0 0 12px rgba(0,231,1,0.05); }
+  body.theme-neon .username    { text-shadow: 0 0 8px currentColor; }
+  body.theme-neon .msg-text    { color: #c8f0ff; text-shadow: 0 0 6px rgba(0,200,224,0.35); }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: LIGHT — fundo branco semitransparente
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-light .msg {
+    background: rgba(255, 255, 255, 0.88);
+    border-radius: 8px;
+    backdrop-filter: blur(6px);
+  }
+  body.theme-light .msg.twitch  { border-left-color: #9147ff; }
+  body.theme-light .msg.youtube { border-left-color: #ff0000; }
+  body.theme-light .msg.kick    { border-left-color: #00b800; }
+  body.theme-light .msg-text    { color: #1a1a2e; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: BOXSIDE — só borda lateral, fundo transparente
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-boxside .msg {
+    background: transparent;
+    border-radius: 0;
+    border-left: 3px solid #9B9B9B;
+    padding: 4px 10px;
+    box-shadow: none;
+  }
+  body.theme-boxside .msg.twitch  { border-left-color: #9147ff; }
+  body.theme-boxside .msg.youtube { border-left-color: #ff0000; }
+  body.theme-boxside .msg.kick    { border-left-color: #00e701; }
+  body.theme-boxside .platform-icon { display: none; }
+  body.theme-boxside .msg-text   { color: #fff; font-size: 13px; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: RETRO — terminal CRT fósforo verde
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-retro { font-family: 'VT323', monospace; }
+
+  /* Scanlines CRT */
+  body.theme-retro::after {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px,
+      transparent 1px, transparent 3px
+    );
+  }
+  body.theme-retro .msg {
+    background: rgba(0, 12, 0, 0.88);
+    border-left: 2px solid #00ff41;
+    border-radius: 0;
+    box-shadow: 0 0 6px rgba(0,255,65,0.15), inset 0 0 12px rgba(0,255,65,0.04);
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    padding: 5px 10px 5px 8px;
+  }
+  body.theme-retro .msg.youtube { border-left-color: #00ff41; }
+  body.theme-retro .msg.kick    { border-left-color: #00ff41; }
+  body.theme-retro .platform-icon { display: none; }
+  body.theme-retro .username {
+    color: #00ff41;
+    font-size: 17px;
+    font-family: 'VT323', monospace;
+    text-shadow: 0 0 6px rgba(0,255,65,0.7);
+  }
+  body.theme-retro .username::before { content: '['; }
+  body.theme-retro .username::after  { content: ']'; }
+  body.theme-retro .msg-text {
+    color: #a8ffa8;
+    font-size: 17px;
+    font-family: 'VT323', monospace;
+    text-shadow: 0 0 4px rgba(0,255,65,0.3);
+  }
+  body.theme-retro .msg-text::before { content: '> '; color: #00ff41; opacity: 0.6; }
+
+  /* ══════════════════════════════════════════════════════════════
+     TEMA: RADIO 80s — synthwave, magenta + laranja
+  ══════════════════════════════════════════════════════════════ */
+  body.theme-retro80 .msg {
+    background: rgba(15, 0, 22, 0.90);
+    border-left: 3px solid #ff1a8c;
+    border-radius: 3px;
+    box-shadow: 0 0 10px rgba(255,26,140,0.18), inset 0 0 18px rgba(255,26,140,0.04);
+    font-size: 14px;
+  }
+  body.theme-retro80 .msg.youtube { border-left-color: #ff6600; }
+  body.theme-retro80 .msg.kick    { border-left-color: #ffe100; }
+  body.theme-retro80 .platform-icon { filter: hue-rotate(300deg) saturate(1.4); border-radius: 3px; }
+  body.theme-retro80 .username {
+    font-family: 'Bungee', sans-serif;
+    font-size: 12px;
+    background: linear-gradient(90deg, #ff1a8c, #ff8c00);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  body.theme-retro80 .msg-text { color: #ffd6e8; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div id="messages"></div>
+
+<script>
+  const STORAGE_KEY = 'obs_chat_cfg';
+
+  const PLATFORM_ICONS = {
+    twitch:  '/icones/twitch.png',
+    youtube: '/icones/youtube.png',
+    kick:    '/icones/kick.png',
+  };
+
+  function loadConfig() {
+    const params   = new URLSearchParams(window.location.search);
+    const stored   = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    const defaults = { timeout: 30, max: 20 };
+    return {
+      timeout: parseInt(params.get('timeout') ?? stored.timeout ?? defaults.timeout),
+      max:     parseInt(params.get('max')     ?? stored.max     ?? defaults.max),
+    };
+  }
+
+  const cfg = loadConfig();
+
+  const container = document.getElementById('messages');
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function removeMsg(el) {
+    if (el.classList.contains('removing')) return;
+    el.classList.add('removing');
+    el.addEventListener('transitionend', () => el.remove(), { once: true });
+    setTimeout(() => el.remove(), 600);
+  }
+
+  function addMessage(data) {
+    const div = document.createElement('div');
+    div.className = `msg ${data.platform}`;
+
+    const iconSrc  = PLATFORM_ICONS[data.platform];
+    const iconHtml = iconSrc
+      ? `<img class="platform-icon" src="${iconSrc}" alt="${escapeHtml(data.platform)}">`
+      : `<span class="platform-icon" style="font-size:11px">💬</span>`;
+    const color = data.color || '#9B9B9B';
+
+    const firstBadge = data.first_time ? `<span class="first-time-badge">✦ Primeira vez</span>` : '';
+    div.innerHTML = `
+      <div class="msg-header">
+        ${iconHtml}
+        <span class="username" style="color:${color}">${escapeHtml(data.user)}</span>${firstBadge}
+      </div>
+      <div class="msg-text">${data.message_html ?? escapeHtml(data.message)}</div>
+    `;
+
+    container.prepend(div);
+    setTimeout(() => removeMsg(div), cfg.timeout * 1000);
+    enforceLimit();
+  }
+
+  function enforceLimit() {
+    const msgs = [...container.querySelectorAll('.msg:not(.removing)')];
+    if (msgs.length > cfg.max) {
+      msgs.slice(cfg.max).forEach(el => removeMsg(el));
+    }
+  }
+
+  function connect() {
+    const ws = new WebSocket('ws://localhost:3000/ws/chat');
+
+    ws.onopen = () => console.log('[Chat Overlay] WebSocket conectado');
+
+    ws.onmessage = (event) => {
+      try {
+        addMessage(JSON.parse(event.data));
+      } catch (e) {
+        console.error('[Chat Overlay] Erro ao parsear mensagem', e);
+      }
+    };
+
+    ws.onclose = () => {
+      console.warn('[Chat Overlay] Desconectado. Reconectando em 3s…');
+      setTimeout(connect, 3000);
+    };
+
+    ws.onerror = (e) => console.error('[Chat Overlay] Erro WS', e);
+  }
+
+  connect();
+
+  // Carrega tema do overlay e escuta mudanças em tempo real
+  function _applyOverlayTheme(theme) {
+    document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
+    if (theme && theme !== 'minimal') document.body.classList.add('theme-' + theme);
+  }
+
+  (async () => {
+    try {
+      const d = await fetch('/overlay/themes').then(r => r.json());
+      _applyOverlayTheme(d.chat || 'minimal');
+    } catch {}
+  })();
+
+  // Custom styles
+  function _applyCustomCss(css) {
+    let el = document.getElementById('ov-custom-style');
+    if (!el) { el = document.createElement('style'); el.id = 'ov-custom-style'; document.head.appendChild(el); }
+    el.textContent = css || '';
+  }
+  (async () => {
+    try {
+      const d = await fetch('/overlay/custom-styles/chat').then(r => r.json());
+      _applyCustomCss(d.css || '');
+    } catch {}
+  })();
+
+  (function _connectOverlayEvents() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${proto}://${location.host}/ws/overlay-events`);
+    ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'theme_changed') _applyOverlayTheme(msg.themes.chat || 'minimal');
+        if (msg.type === 'styles_changed' && msg.key === 'chat') _applyCustomCss(msg.css || '');
+      } catch {}
+    };
+    ws.onclose = () => setTimeout(_connectOverlayEvents, 3000);
+  })();
+</script>
+
+<!-- Badge FREE (oculto para Premium) -->
+<div id="nucleus-badge" style="
+  position:fixed; top:8px; right:10px;
+  font-family:'Segoe UI',sans-serif; font-size:10px;
+  color:rgba(255,255,255,0.25); letter-spacing:0.04em;
+  pointer-events:none; display:none;">
+  Powered by Nucleus
+</div>
+<script>
+fetch('/auth/plan').then(r => r.json()).then(d => {
+  if (!d.is_premium) document.getElementById('nucleus-badge').style.display = 'block';
+}).catch(() => { document.getElementById('nucleus-badge').style.display = 'block'; });
+</script>
+</body>
+</html>

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Countdown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=VT323&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Nucleus badge ─────────────────────────────────────────────────────────── */
+#nucleus-badge {
+  position: fixed;
+  bottom: 10px; right: 14px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.25);
+  display: none;
+  pointer-events: none;
+}
+
+/* ── Wrapper (hidden by default — shows only when active) ──────────────────── */
+.cd-wrap {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 32px 48px;
+  position: relative;
+}
+.cd-wrap.active { display: flex; }
+
+/* ── Live flash (shown when countdown hits 0) ──────────────────────────────── */
+.cd-live {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  position: absolute;
+  inset: 0;
+  animation: liveIn 0.4s ease forwards;
+}
+.cd-live.show { display: flex; }
+@keyframes liveIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Base typography ───────────────────────────────────────────────────────── */
+.cd-message {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: 0.72;
+  color: #fff;
+}
+
+.cd-time {
+  font-size: 96px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+}
+
+.cd-sub {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  opacity: 0.45;
+  color: #fff;
+}
+
+.cd-live-label {
+  font-size: 64px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.cd-live-sub {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  color: #fff;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TEMA: NEON — cyan glow
+══════════════════════════════════════════════════════════════════════════════ */
+body.theme-neon .cd-wrap {
+  border: 2px solid rgba(0,200,224,0.45);
+  border-radius: 8px;
+  box-shadow: 0 0 40px rgba(0,200,224,0.15), inset 0 0 30px rgba(0,200,224,0.03);
+  background: rgba(0,10,18,0.55);
+  backdrop-filter: blur(12px);
+}
+body.theme-neon .cd-time    { color: #00c8e0; text-shadow: 0 0 30px rgba(0,200,224,0.5), 0 0 60px rgba(0,200,224,0.25); }
+body.theme-neon .cd-message { color: rgba(0,200,224,0.85); }
+body.theme-neon .cd-sub     { color: rgba(0,200,224,0.5); }
+body.theme-neon .cd-live-label { color: #00c8e0; text-shadow: 0 0 40px rgba(0,200,224,0.6); }
+body.theme-neon .cd-live { border: 2px solid rgba(0,200,224,0.45); border-radius: 8px; background: rgba(0,10,18,0.55); backdrop-filter: blur(12px); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TEMA: RETRO — verde CRT
+══════════════════════════════════════════════════════════════════════════════ */
+body.theme-retro .cd-wrap {
+  border: 2px solid rgba(0,255,65,0.35);
+  border-radius: 2px;
+  box-shadow: 0 0 30px rgba(0,255,65,0.12);
+  background: rgba(0,8,2,0.65);
+}
+body.theme-retro .cd-time    { font-family: 'VT323', monospace; font-size: 120px; color: #00ff41; text-shadow: 0 0 20px rgba(0,255,65,0.5); }
+body.theme-retro .cd-message { font-family: 'VT323', monospace; font-size: 22px; color: #a8ffa8; letter-spacing: .12em; opacity: 1; }
+body.theme-retro .cd-sub     { font-family: 'VT323', monospace; color: rgba(0,255,65,0.45); }
+body.theme-retro .cd-live-label { font-family: 'VT323', monospace; font-size: 90px; color: #00ff41; text-shadow: 0 0 30px rgba(0,255,65,0.6); }
+body.theme-retro .cd-live   { border: 2px solid rgba(0,255,65,0.35); border-radius: 2px; background: rgba(0,8,2,0.65); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TEMA: RETRO80 — magenta synthwave
+══════════════════════════════════════════════════════════════════════════════ */
+body.theme-retro80 .cd-wrap {
+  border: 2px solid rgba(255,26,140,0.45);
+  border-radius: 4px;
+  box-shadow: 0 0 40px rgba(255,26,140,0.18);
+  background: rgba(10,0,18,0.65);
+}
+body.theme-retro80 .cd-time    { color: #ff1a8c; text-shadow: 0 0 30px rgba(255,26,140,0.55); }
+body.theme-retro80 .cd-message { color: #ffd6e8; opacity: 0.8; }
+body.theme-retro80 .cd-sub     { color: rgba(255,26,140,0.5); }
+body.theme-retro80 .cd-live-label { color: #ff1a8c; text-shadow: 0 0 40px rgba(255,26,140,0.65); }
+body.theme-retro80 .cd-live { border: 2px solid rgba(255,26,140,0.45); border-radius: 4px; background: rgba(10,0,18,0.65); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TEMA: TWITCH — roxo
+══════════════════════════════════════════════════════════════════════════════ */
+body.theme-twitch .cd-wrap {
+  border: 2px solid rgba(145,71,255,0.45);
+  border-radius: 10px;
+  box-shadow: 0 0 36px rgba(145,71,255,0.18);
+  background: rgba(12,6,24,0.65);
+}
+body.theme-twitch .cd-time    { color: #9147ff; text-shadow: 0 0 30px rgba(145,71,255,0.45); }
+body.theme-twitch .cd-message { color: #c9a8ff; opacity: 0.85; }
+body.theme-twitch .cd-sub     { color: rgba(145,71,255,0.5); }
+body.theme-twitch .cd-live-label { color: #9147ff; text-shadow: 0 0 40px rgba(145,71,255,0.55); }
+body.theme-twitch .cd-live { border: 2px solid rgba(145,71,255,0.45); border-radius: 10px; background: rgba(12,6,24,0.65); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TEMA: FIRE — laranja/vermelho
+══════════════════════════════════════════════════════════════════════════════ */
+body.theme-fire .cd-wrap {
+  border: 2px solid rgba(255,100,20,0.5);
+  border-radius: 6px;
+  box-shadow: 0 0 40px rgba(255,60,0,0.2);
+  background: rgba(18,5,0,0.65);
+}
+body.theme-fire .cd-time    { color: #ff6014; text-shadow: 0 0 30px rgba(255,96,20,0.55); }
+body.theme-fire .cd-message { color: #ffb380; opacity: 0.85; }
+body.theme-fire .cd-sub     { color: rgba(255,100,20,0.5); }
+body.theme-fire .cd-live-label { color: #ff6014; text-shadow: 0 0 40px rgba(255,96,20,0.65); }
+body.theme-fire .cd-live { border: 2px solid rgba(255,100,20,0.5); border-radius: 6px; background: rgba(18,5,0,0.65); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TEMA: ICE — azul gelo
+══════════════════════════════════════════════════════════════════════════════ */
+body.theme-ice .cd-wrap {
+  border: 2px solid rgba(100,180,255,0.45);
+  border-radius: 12px;
+  box-shadow: 0 0 36px rgba(100,180,255,0.15);
+  background: rgba(4,8,22,0.6);
+  backdrop-filter: blur(14px);
+}
+body.theme-ice .cd-time    { color: #64b4ff; text-shadow: 0 0 28px rgba(100,180,255,0.45); }
+body.theme-ice .cd-message { color: #b8d8ff; opacity: 0.8; }
+body.theme-ice .cd-sub     { color: rgba(100,180,255,0.45); }
+body.theme-ice .cd-live-label { color: #64b4ff; text-shadow: 0 0 40px rgba(100,180,255,0.55); }
+body.theme-ice .cd-live { border: 2px solid rgba(100,180,255,0.45); border-radius: 12px; background: rgba(4,8,22,0.6); backdrop-filter: blur(14px); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   TEMA: GOLD — dourado elegante
+══════════════════════════════════════════════════════════════════════════════ */
+body.theme-gold .cd-wrap {
+  border: 2px solid rgba(245,158,11,0.5);
+  border-radius: 8px;
+  box-shadow: 0 0 36px rgba(245,158,11,0.18);
+  background: rgba(14,9,2,0.65);
+}
+body.theme-gold .cd-time    { color: #f59e0b; text-shadow: 0 0 28px rgba(245,158,11,0.45); }
+body.theme-gold .cd-message { color: #fde68a; opacity: 0.8; }
+body.theme-gold .cd-sub     { color: rgba(245,158,11,0.45); }
+body.theme-gold .cd-live-label { color: #f59e0b; text-shadow: 0 0 40px rgba(245,158,11,0.55); }
+body.theme-gold .cd-live { border: 2px solid rgba(245,158,11,0.5); border-radius: 8px; background: rgba(14,9,2,0.65); }
+
+</style>
+</head>
+<body>
+
+<div class="cd-wrap" id="cd-wrap">
+  <div class="cd-message" id="cd-msg">Em breve</div>
+  <div class="cd-time"    id="cd-time">00:00</div>
+  <div class="cd-sub"     id="cd-sub">Aguarde</div>
+  <div class="cd-live" id="cd-live">
+    <div class="cd-live-label">AO VIVO</div>
+    <div class="cd-live-sub">Começando agora</div>
+  </div>
+</div>
+
+<div id="nucleus-badge">Powered by Nucleus</div>
+
+<script>
+  // Badge FREE
+  fetch('/auth/plan').then(r => r.json()).then(d => {
+    if (!d.is_premium) document.getElementById('nucleus-badge').style.display = 'block';
+  }).catch(() => { document.getElementById('nucleus-badge').style.display = 'block'; });
+
+  // ── Tema ──────────────────────────────────────────────────────────────────
+  function _applyOverlayTheme(theme) {
+    document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
+    if (theme && theme !== 'minimal') document.body.classList.add('theme-' + theme);
+  }
+
+  (async () => {
+    try {
+      const d = await fetch('/overlay/themes').then(r => r.json());
+      _applyOverlayTheme(d.countdown || 'minimal');
+    } catch {}
+  })();
+
+  // Custom styles
+  function _applyCustomCss(css) {
+    let el = document.getElementById('ov-custom-style');
+    if (!el) { el = document.createElement('style'); el.id = 'ov-custom-style'; document.head.appendChild(el); }
+    el.textContent = css || '';
+  }
+  (async () => {
+    try {
+      const d = await fetch('/overlay/custom-styles/countdown').then(r => r.json());
+      _applyCustomCss(d.css || '');
+    } catch {}
+  })();
+
+  (function _connectOverlayEvents() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${proto}://${location.host}/ws/overlay-events`);
+    ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'theme_changed') _applyOverlayTheme(msg.themes.countdown || 'minimal');
+        if (msg.type === 'styles_changed' && msg.key === 'countdown') _applyCustomCss(msg.css || '');
+      } catch {}
+    };
+    ws.onclose = () => setTimeout(_connectOverlayEvents, 3000);
+  })();
+
+  // ── Countdown WS ──────────────────────────────────────────────────────────
+  const wrap      = document.getElementById('cd-wrap');
+  const cdMsg     = document.getElementById('cd-msg');
+  const cdTime    = document.getElementById('cd-time');
+  const cdSub     = document.getElementById('cd-sub');
+  const cdLive    = document.getElementById('cd-live');
+
+  let _liveTimer = null;
+
+  function _apply(state) {
+    if (state.finished) {
+      // Mostra "AO VIVO" por 4s depois some
+      wrap.classList.add('active');
+      cdTime.style.display = 'none';
+      cdMsg.style.display  = 'none';
+      cdSub.style.display  = 'none';
+      cdLive.classList.add('show');
+      clearTimeout(_liveTimer);
+      _liveTimer = setTimeout(() => {
+        wrap.classList.remove('active');
+        cdLive.classList.remove('show');
+        cdTime.style.display = '';
+        cdMsg.style.display  = '';
+        cdSub.style.display  = '';
+      }, 4000);
+      return;
+    }
+
+    if (!state.running) {
+      if (!state.finished) {
+        wrap.classList.remove('active');
+      }
+      return;
+    }
+
+    wrap.classList.add('active');
+    cdLive.classList.remove('show');
+    cdTime.style.display = '';
+    cdMsg.style.display  = '';
+    cdSub.style.display  = '';
+    cdTime.textContent = state.display || '00:00';
+    if (state.message) {
+      cdMsg.textContent = state.message;
+      cdMsg.style.display = '';
+    } else {
+      cdMsg.style.display = 'none';
+    }
+    cdSub.textContent = state.paused ? 'Pausado' : 'Aguarde';
+  }
+
+  function _connectCountdown() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${proto}://${location.host}/ws/countdown`);
+    ws.onmessage = e => {
+      try { _apply(JSON.parse(e.data)); } catch {}
+    };
+    ws.onclose = () => setTimeout(_connectCountdown, 3000);
+  }
+
+  _connectCountdown();
+</script>
+</body>
+</html>

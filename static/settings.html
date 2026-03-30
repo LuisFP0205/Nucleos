@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Configurações — Nucleus</title>
+<script src="/static/supabase.js"></script>
+<script src="/static/nucleus-auth.js"></script>
+<style id="_ah">body{visibility:hidden!important}</style>
+<style>
+.nk-page { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+.nk-titlebar { height:40px; min-height:40px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; border-bottom:1px solid var(--border); background:var(--wrap); flex-shrink:0; }
+.nk-title { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.nk-row { display:flex; align-items:center; }
+
+/* ── Two-column layout ── */
+.settings-layout { flex:1; display:grid; grid-template-columns:160px 1fr; overflow:hidden; }
+
+/* ── Tab nav ── */
+.settings-nav { border-right:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; background:var(--wrap); }
+.s-tab {
+  height:34px; display:flex; align-items:center; gap:8px;
+  padding:0 12px; font-size:12px; color:var(--muted);
+  cursor:pointer; text-decoration:none;
+  border-left:2px solid transparent;
+  transition:color .12s, background .12s;
+  border-bottom:1px solid var(--border);
+}
+.s-tab:hover { color:var(--text); background:rgba(255,255,255,.025); }
+.s-tab.on { color:var(--text); background:rgba(145,71,255,.1); border-left-color:var(--purple); }
+.s-tab-ico { font-size:12px; width:16px; text-align:center; }
+
+/* ── Panels ── */
+.settings-panels { overflow-y:auto; }
+.s-panel { display:none; padding:14px 18px; }
+.s-panel.on { display:block; }
+
+.s-section { margin-bottom:16px; }
+.s-sec-hd {
+  font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.8px;
+  padding-bottom:7px; border-bottom:1px solid var(--border); margin-bottom:10px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.s-field { margin-bottom:10px; }
+.s-field label { display:block; font-size:11px; color:var(--muted); margin-bottom:4px; }
+.s-field .hint { font-size:10px; color:var(--dim); margin-top:3px; }
+.s-row { display:flex; gap:8px; align-items:flex-start; }
+.s-row .s-field { flex:1; }
+.s-inline { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.s-inline label { font-size:12px; color:var(--muted); }
+
+/* Plan card */
+.plan-banner {
+  display:flex; align-items:center; gap:12px; padding:12px 14px;
+  background:rgba(145,71,255,.08); border:1px solid rgba(145,71,255,.2);
+  border-radius:var(--r2); margin-bottom:14px;
+}
+.plan-ico  { font-size:20px; }
+.plan-name { font-size:13px; font-weight:700; color:var(--text); }
+.plan-desc { font-size:11px; color:var(--muted); margin-top:1px; }
+
+/* Feature comparison */
+.feat-table { width:100%; border-collapse:collapse; font-size:11.5px; }
+.feat-table th { padding:5px 10px; text-align:left; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; border-bottom:1px solid var(--border); }
+.feat-table td { padding:5px 10px; border-bottom:1px solid var(--border); color:var(--muted); }
+.feat-table td:not(:first-child) { text-align:center; }
+.feat-table .prem { color:var(--purple); font-weight:600; }
+
+/* Log viewer */
+.log-view {
+  background:var(--bg); border:1px solid var(--border); border-radius:var(--r1);
+  padding:8px 10px; height:220px; overflow-y:auto;
+  font-family:var(--mono); font-size:11px; line-height:1.7;
+}
+.log-err  { color:var(--red); }
+.log-warn { color:var(--yellow); }
+.log-info { color:var(--muted); }
+
+/* Danger zone */
+.danger-row { display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border); }
+.danger-row:last-child { border-bottom:none; }
+.danger-label { font-size:12px; color:var(--muted); }
+.danger-hint  { font-size:10px; color:var(--dim); margin-top:1px; }
+
+/* Theme cards */
+.theme-card {
+  flex:1; cursor:pointer; border:2px solid var(--border);
+  border-radius:var(--r2); overflow:hidden; transition:border-color .15s;
+}
+.theme-card.selected { border-color:var(--purple); }
+.theme-card:hover { border-color:var(--border2); }
+.theme-preview { height:60px; }
+.dark-prev { background:linear-gradient(135deg,#060912 0%,#0e1120 100%); }
+.light-prev { background:linear-gradient(135deg,#f0f2fa 0%,#ffffff 100%); }
+.theme-card-label { padding:8px 12px; font-size:11px; font-weight:600; color:var(--muted); }
+.theme-card.selected .theme-card-label { color:var(--text); }
+
+/* Nav logout */
+.s-logout-nav {
+  margin:8px; padding:7px 12px;
+  background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.2);
+  border-radius:var(--r1); color:var(--red); font-size:12px; font-weight:600;
+  cursor:pointer; text-align:left; transition:background .12s, border-color .12s;
+  width:calc(100% - 16px);
+}
+.s-logout-nav:hover { background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.4); }
+
+/* Modal */
+.nk-modal-overlay {
+  position:fixed; inset:0; z-index:1000;
+  background:rgba(0,0,0,.65); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.nk-modal-overlay.open { opacity:1; pointer-events:all; }
+.nk-modal {
+  background:var(--wrap); border:1px solid var(--border); border-radius:var(--r3);
+  width:560px; max-width:calc(100vw - 32px); padding:24px;
+  transform:translateY(12px); transition:transform .2s;
+  position:relative;
+}
+.nk-modal-overlay.open .nk-modal { transform:translateY(0); }
+.nk-modal-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.nk-modal-title { font-size:14px; font-weight:700; color:var(--text); }
+.nk-modal-close {
+  width:28px; height:28px; border-radius:var(--r1); border:1px solid var(--border);
+  background:none; color:var(--muted); cursor:pointer; font-size:16px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  transition:color .12s, border-color .12s;
+}
+.nk-modal-close:hover { color:var(--text); border-color:var(--border2); }
+
+/* Plan cards */
+.plan-card {
+  background:var(--bg); border:1px solid var(--border); border-radius:var(--r2);
+  padding:14px; display:flex; flex-direction:column; position:relative;
+}
+.plan-card.premium { border-color:rgba(145,71,255,.4); background:rgba(145,71,255,.04); }
+.plan-badge-top {
+  position:absolute; top:-10px; left:50%; transform:translateX(-50%);
+  background:var(--purple); color:#fff; font-size:9px; font-weight:700;
+  letter-spacing:.8px; padding:2px 8px; border-radius:20px;
+}
+.plan-card-hd { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.plan-card-ico { font-size:20px; }
+.plan-card-name { font-size:13px; font-weight:700; color:var(--text); }
+.plan-card-price { font-size:18px; font-weight:800; color:var(--cyan); margin-top:2px; }
+.plan-card-price span { font-size:11px; color:var(--muted); font-weight:400; }
+.plan-feat-list { list-style:none; display:flex; flex-direction:column; gap:5px; flex:1; }
+.plan-feat-list li { font-size:11.5px; color:var(--muted); }
+.plan-feat-list li.dim { color:var(--dim); }
+.plan-feat-list li:first-child ~ li { border:none; }
+.plan-card.premium .plan-feat-list li:not(.dim) { color:var(--text); }
+</style>
+</head>
+<body>
+<script src="/static/nucleus-sidebar.js"></script>
+<div class="nk-page">
+  <div class="nk-titlebar">
+    <span class="nk-title">Configurações</span>
+    <span id="save-status" style="font-size:10px;color:var(--dim);font-family:var(--mono)"></span>
+  </div>
+
+  <div class="settings-layout">
+
+    <!-- Tab nav -->
+    <div class="settings-nav">
+      <a class="s-tab on" href="#" onclick="showTab('account',this)"><span class="s-tab-ico">👤</span> Conta</a>
+      <a class="s-tab"    href="#" onclick="showTab('obs',this)">    <span class="s-tab-ico">◉</span> OBS</a>
+      <a class="s-tab"    href="#" onclick="showTab('stream',this)"> <span class="s-tab-ico">📡</span> Stream</a>
+      <a class="s-tab"    href="#" onclick="showTab('plans',this)">  <span class="s-tab-ico">⭐</span> Planos</a>
+      <a class="s-tab"    href="#" onclick="showTab('theme',this)"><span class="s-tab-ico">🎨</span> Tema</a>
+      <div style="flex:1"></div>
+      <button class="s-logout-nav" onclick="NucleusLogout(event)">⏻ Sair</button>
+    </div>
+
+    <!-- Panels -->
+    <div class="settings-panels">
+
+      <!-- OBS -->
+      <div class="s-panel" id="panel-obs">
+        <div class="s-section">
+          <div class="s-sec-hd">OBS WebSocket</div>
+          <div class="s-row">
+            <div class="s-field"><label>Host</label><input class="nk-input" id="obs_host" value="localhost"></div>
+            <div class="s-field" style="max-width:100px"><label>Porta</label><input class="nk-input" id="obs_port" value="4455" type="number"></div>
+            <div class="s-field"><label>Senha (opcional)</label><div class="key-wrap"><input class="nk-input" id="obs_password" type="password" placeholder=""></div></div>
+          </div>
+        </div>
+        <div class="s-section">
+          <div class="s-sec-hd">Auto-Switch de Cenas</div>
+          <div class="s-inline"><label>Ativar troca automática de cena</label><label class="nk-toggle"><input type="checkbox" id="obs_auto_switch"><span class="nk-toggle-track"></span></label></div>
+          <div class="s-row" style="max-width:500px">
+            <div class="s-field"><label>Cena: AO VIVO</label><select class="nk-input" id="obs_live_scene"><option value="">— selecionar —</option></select></div>
+            <div class="s-field"><label>Cena: OFFLINE</label><select class="nk-input" id="obs_offline_scene"><option value="">— selecionar —</option></select></div>
+          </div>
+        </div>
+        <div class="nk-row" style="gap:7px">
+          <button class="btn btn-primary" onclick="saveOBS()">Salvar OBS</button>
+          <a class="btn btn-ghost" href="/connections">Testar conexão →</a>
+        </div>
+      </div>
+
+      <!-- Stream -->
+      <div class="s-panel" id="panel-stream">
+        <div class="s-section">
+          <div class="s-sec-hd">Detecção automática</div>
+          <div class="s-field" style="max-width:180px">
+            <label>Intervalo de checagem (segundos)</label>
+            <input class="nk-input" id="detect_interval" type="number" value="30" min="10" max="300">
+            <div class="hint">Padrão: 30s</div>
+          </div>
+          <div style="margin-top:10px">
+            <div class="s-inline" style="max-width:320px">
+              <label style="display:flex;align-items:center;gap:6px">Twitch <span id="auth-twitch-name" style="font-size:10px;color:var(--purple);font-weight:600"></span></label>
+              <label class="nk-toggle"><input type="checkbox" id="plat_twitch" checked><span class="nk-toggle-track"></span></label>
+            </div>
+            <div class="s-inline" style="max-width:320px">
+              <label style="display:flex;align-items:center;gap:6px">YouTube <span id="auth-youtube-name" style="font-size:10px;color:var(--purple);font-weight:600"></span></label>
+              <label class="nk-toggle"><input type="checkbox" id="plat_youtube" checked><span class="nk-toggle-track"></span></label>
+            </div>
+            <div class="s-inline" style="max-width:320px">
+              <label style="display:flex;align-items:center;gap:6px">Kick <span id="auth-kick-name" style="font-size:10px;color:var(--purple);font-weight:600"></span></label>
+              <label class="nk-toggle"><input type="checkbox" id="plat_kick" checked><span class="nk-toggle-track"></span></label>
+            </div>
+          </div>
+        </div>
+        <div class="s-section">
+          <div class="s-sec-hd">Música</div>
+          <div class="s-inline" style="max-width:320px"><label>Detecção via Windows GSMTC</label><label class="nk-toggle"><input type="checkbox" id="music_enabled" checked><span class="nk-toggle-track"></span></label></div>
+        </div>
+        <button class="btn btn-primary" onclick="saveStream()">Salvar</button>
+      </div>
+
+      <!-- Account -->
+      <div class="s-panel on" id="panel-account">
+        <div class="s-section">
+          <div class="s-sec-hd">Perfil</div>
+          <div class="s-field" style="max-width:320px"><label>E-mail</label><input class="nk-input" id="acc-email" readonly style="opacity:.5;cursor:not-allowed"></div>
+          <div class="s-row" style="max-width:400px;align-items:flex-end">
+            <div class="s-field"><label>Nome de exibição</label><input class="nk-input" id="acc-display" placeholder="Seu nome"></div>
+            <button class="btn btn-ghost" onclick="saveDisplayName()" style="flex-shrink:0;margin-bottom:10px">Salvar</button>
+          </div>
+        </div>
+        <div class="s-section">
+          <div class="s-sec-hd">Senha</div>
+          <div class="s-row" style="max-width:400px;align-items:flex-end">
+            <div class="s-field"><label>Nova senha</label><input class="nk-input" id="new-pass" type="password"></div>
+            <button class="btn btn-ghost" onclick="changePassword()" style="flex-shrink:0;margin-bottom:10px">Atualizar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Plans -->
+      <div class="s-panel" id="panel-plans">
+        <div style="padding:40px 0;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+          <div style="font-size:32px">⭐</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">Plano Free</div>
+          <div style="font-size:11px;color:var(--muted)">Acesso aos recursos básicos do Nucleus</div>
+          <button class="btn btn-primary" onclick="openPlansModal()" style="margin-top:8px">Ver todos os planos →</button>
+        </div>
+      </div>
+
+
+      <!-- Theme -->
+      <div class="s-panel" id="panel-theme">
+        <div class="s-section">
+          <div class="s-sec-hd">Aparência</div>
+          <div style="display:flex;gap:12px;margin-bottom:16px">
+            <div class="theme-card" id="tc-dark" onclick="selectTheme('dark')">
+              <div class="theme-preview dark-prev"></div>
+              <div class="theme-card-label">🌑 Escuro</div>
+            </div>
+            <div class="theme-card" id="tc-light" onclick="selectTheme('light')">
+              <div class="theme-preview light-prev"></div>
+              <div class="theme-card-label">☀ Claro</div>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+
+    </div><!-- /panels -->
+  </div><!-- /settings-layout -->
+</div><!-- /nk-page -->
+
+<!-- Plans modal -->
+<div class="nk-modal-overlay" id="plans-modal" onclick="if(event.target===this)closePlansModal()">
+  <div class="nk-modal">
+    <div class="nk-modal-hd">
+      <span class="nk-modal-title">Escolha seu plano</span>
+      <button class="nk-modal-close" onclick="closePlansModal()">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="plan-card">
+        <div class="plan-card-hd">
+          <div class="plan-card-ico">⭐</div>
+          <div>
+            <div class="plan-card-name">Free</div>
+            <div class="plan-card-price">R$0<span>/mês</span></div>
+          </div>
+        </div>
+        <ul class="plan-feat-list">
+          <li>✓ 3 Plataformas</li>
+          <li>✓ Overlays básicos</li>
+          <li>✓ 2 Temas</li>
+          <li>✓ Analytics 7 dias</li>
+          <li>✓ 10 Comandos</li>
+          <li>✓ Auto-switch OBS</li>
+          <li class="dim">✗ Editor visual</li>
+          <li class="dim">✗ Suporte prioritário</li>
+        </ul>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:12px" onclick="closePlansModal()">Plano atual</button>
+      </div>
+      <div class="plan-card premium" style="position:relative">
+        <div class="plan-badge-top">RECOMENDADO</div>
+        <div class="plan-card-hd">
+          <div class="plan-card-ico">✨</div>
+          <div>
+            <div class="plan-card-name">Premium</div>
+            <div class="plan-card-price">R$19<span>/mês</span></div>
+          </div>
+        </div>
+        <ul class="plan-feat-list">
+          <li>✓ 3 Plataformas</li>
+          <li>✓ Todos os overlays + custom</li>
+          <li>✓ Temas ilimitados</li>
+          <li>✓ Analytics 90 dias</li>
+          <li>✓ Comandos ilimitados</li>
+          <li>✓ Auto-switch OBS</li>
+          <li>✓ Editor visual</li>
+          <li>✓ Suporte prioritário</li>
+        </ul>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:12px" onclick="NucleusToast('Em breve!','info')">Fazer upgrade →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+NucleusAuth.guard();
+(function(){
+  window.showTab=(id,btn)=>{
+    event.preventDefault();
+    document.querySelectorAll(".s-panel").forEach(p=>p.classList.remove("on"));
+    document.querySelectorAll(".s-tab").forEach(t=>t.classList.remove("on"));
+    document.getElementById("panel-"+id)?.classList.add("on");
+    btn.classList.add("on");
+    if(id==="logs")loadLogs();
+    if(id==="obs")loadOBSScenes();
+    if(id==="account")loadAccount();
+    if(id==="theme")loadThemePanel();
+  };
+
+  // Carrega a aba Conta na abertura (já ativa por padrão)
+  loadAccount();
+
+  async function loadOBSScenes(savedLive, savedOffline){
+    try{
+      const r=await fetch("/obs/scenes");
+      if(!r.ok)return;
+      const scenes=await r.json();
+      ["obs_live_scene","obs_offline_scene"].forEach(id=>{
+        const sel=document.getElementById(id);
+        const cur=sel.value;
+        sel.innerHTML='<option value="">— selecionar —</option>';
+        scenes.forEach(s=>{const o=document.createElement("option");o.value=o.textContent=s;sel.appendChild(o);});
+        if(savedLive&&id==="obs_live_scene")sel.value=savedLive;
+        else if(savedOffline&&id==="obs_offline_scene")sel.value=savedOffline;
+        else if(cur)sel.value=cur;
+      });
+    }catch(_){}
+  }
+
+  window.saveOBS=async()=>{
+    const b={obs_host:document.getElementById("obs_host").value,obs_port:parseInt(document.getElementById("obs_port").value)||4455,obs_password:document.getElementById("obs_password").value,obs_auto_switch:document.getElementById("obs_auto_switch").checked,obs_live_scene:document.getElementById("obs_live_scene").value,obs_offline_scene:document.getElementById("obs_offline_scene").value};
+    const r=await fetch("/api/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
+    r.ok?NucleusToast("OBS salvo","ok"):NucleusToast("Erro","error");
+  };
+
+  window.saveStream=async()=>{
+    const b={detect_interval:parseInt(document.getElementById("detect_interval").value)||30,platform_twitch:document.getElementById("plat_twitch").checked,platform_youtube:document.getElementById("plat_youtube").checked,platform_kick:document.getElementById("plat_kick").checked,music_enabled:document.getElementById("music_enabled").checked};
+    const r=await fetch("/api/settings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
+    r.ok?NucleusToast("Salvo","ok"):NucleusToast("Erro","error");
+  };
+
+  function _sbLocalUser(){
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(k&&k.startsWith("sb-")&&k.endsWith("-auth-token")){
+          const d=JSON.parse(localStorage.getItem(k)||"{}");
+          const u=d?.user||d?.session?.user;
+          if(u?.email)return u;
+        }
+      }
+    }catch(_){}
+    return null;
+  }
+  async function loadAccount(){
+    // 1. Supabase localStorage (client-side auth)
+    const lu=_sbLocalUser();
+    if(lu){
+      document.getElementById("acc-email").value=lu.email||"";
+      document.getElementById("acc-display").value=lu.user_metadata?.display_name||lu.user_metadata?.full_name||"";
+      return;
+    }
+    // 2. Fallback server
+    try{const r=await fetch("/auth/me");if(!r.ok)return;const d=await r.json();
+      if(d.email){
+        document.getElementById("acc-email").value=d.email;
+        document.getElementById("acc-display").value=d.display_name||"";
+      }
+    }catch(_){}
+  }
+  window.saveDisplayName=async()=>{
+    const name=document.getElementById("acc-display").value.trim();if(!name)return;
+    try{
+      const sb=window._sb;
+      if(sb){
+        const{error}=await sb.auth.updateUser({data:{display_name:name}});
+        if(error)throw error;
+      }
+      NucleusToast("Nome atualizado","ok");
+    }catch(_){NucleusToast("Erro ao salvar","error");}
+  };
+  window.changePassword=async()=>{
+    const p=document.getElementById("new-pass").value;if(!p)return;
+    const r=await fetch("/auth/change-password",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:p})});
+    r.ok?NucleusToast("Senha atualizada","ok"):NucleusToast("Erro","error");
+    document.getElementById("new-pass").value="";
+  };
+  window.loadLogs=async()=>{
+    const v=document.getElementById("log-view");v.textContent="carregando...";
+    try{const r=await fetch("/api/logs?lines=100");if(!r.ok){v.textContent="erro";return;}
+      const d=await r.json();
+      v.innerHTML=(d.lines||[]).map(l=>{const cls=l.toLowerCase().includes("error")?"log-err":l.toLowerCase().includes("warn")?"log-warn":"log-info";return`<div class="${cls}">${l.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</div>`;}).join("")||"<div class='log-info'>sem logs</div>";
+      v.scrollTop=v.scrollHeight;
+    }catch(_){v.textContent="falha";}
+  };
+
+  window.openPlansModal=()=>document.getElementById("plans-modal").classList.add("open");
+  window.closePlansModal=()=>document.getElementById("plans-modal").classList.remove("open");
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")closePlansModal();});
+
+  window.selectTheme = (t) => {
+    if (typeof NucleusToggleTheme !== 'undefined') {
+      const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+      if (cur !== t) NucleusToggleTheme();
+    } else {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem('nk_theme', t);
+    }
+    document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('tc-' + t)?.classList.add('selected');
+  };
+
+  function loadThemePanel() {
+    const cur = document.documentElement.getAttribute('data-theme') || localStorage.getItem('nk_theme') || 'dark';
+    document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('tc-' + cur)?.classList.add('selected');
+    const lu=_sbLocalUser();
+    if(lu){
+      document.getElementById('theme-user-email').textContent=lu.email||'—';
+      return;
+    }
+    (async () => {
+      try {
+        const sb = window._sb;
+        if (sb) {
+          const { data: { session } } = await sb.auth.getSession();
+          if (session?.user) {
+            document.getElementById('theme-user-email').textContent = session.user.email || '—';
+            return;
+          }
+        }
+        const r = await fetch('/auth/me');
+        if (r.ok) { const d = await r.json(); if(d.email) document.getElementById('theme-user-email').textContent = d.email; }
+      } catch (_) {}
+    })();
+  }
+
+  // ── Auth status badges ──
+  (async()=>{
+    try{
+      const r=await fetch("/auth/status");if(!r.ok)return;const d=await r.json();
+      if(d.twitch?.login)  document.getElementById("auth-twitch-name").textContent  = "· "+d.twitch.login;
+      if(d.youtube?.channel_id) document.getElementById("auth-youtube-name").textContent = "· conectado";
+      if(d.kick?.authenticated) document.getElementById("auth-kick-name").textContent    = "· conectado";
+      // tenta buscar nomes reais do kick/youtube
+      try{ const yt=await fetch("/auth/youtube/token-info"); if(yt.ok){const y=await yt.json(); if(y.channel_name) document.getElementById("auth-youtube-name").textContent="· "+y.channel_name;} }catch(_){}
+      try{ const ki=await fetch("/auth/kick/token-info"); if(ki.ok){const k=await ki.json(); if(k.username) document.getElementById("auth-kick-name").textContent="· "+k.username;} }catch(_){}
+    }catch(_){}
+  })();
+
+  // ── Init ──
+  (async()=>{
+    try{const r=await fetch("/api/settings");if(!r.ok)return;const d=await r.json();
+      if(d.obs_host)document.getElementById("obs_host").value=d.obs_host;
+      if(d.obs_port)document.getElementById("obs_port").value=d.obs_port;
+      if(d.obs_auto_switch!=null)document.getElementById("obs_auto_switch").checked=d.obs_auto_switch;
+      loadOBSScenes(d.obs_live_scene||"", d.obs_offline_scene||"");
+      if(d.detect_interval)document.getElementById("detect_interval").value=d.detect_interval;
+      if(d.platform_twitch!=null)document.getElementById("plat_twitch").checked=d.platform_twitch;
+      if(d.platform_youtube!=null)document.getElementById("plat_youtube").checked=d.platform_youtube;
+      if(d.platform_kick!=null)document.getElementById("plat_kick").checked=d.platform_kick;
+      if(d.music_enabled!=null)document.getElementById("music_enabled").checked=d.music_enabled;
+    }catch(_){}
+  })();
+})();
+</script>
+</body>
+</html>

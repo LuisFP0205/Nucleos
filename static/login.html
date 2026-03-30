@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nucleus · Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="/static/supabase.js"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:     #060912;
+  --card:   #0e1120;
+  --card2:  #141828;
+  --border: rgba(255,255,255,0.08);
+  --border2:rgba(255,255,255,0.14);
+  --text:   #dde3f0;
+  --muted:  #4b5478;
+  --dim:    #252b42;
+  --cyan:   #00c8e0;
+  --cyan2:  #00a8be;
+  --red:    #ef4444;
+}
+
+body {
+  background: var(--bg);
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Glows */
+body::before {
+  content: '';
+  position: fixed;
+  bottom: -120px; left: -80px;
+  width: 500px; height: 400px;
+  background: radial-gradient(ellipse, rgba(0,200,224,0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed;
+  top: -80px; right: -60px;
+  width: 360px; height: 300px;
+  background: radial-gradient(ellipse, rgba(145,71,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.card {
+  position: relative;
+  z-index: 1;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 0 0 1px rgba(0,200,224,0.06), 0 32px 80px rgba(0,0,0,0.6);
+}
+
+/* Cyan top line */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0.5;
+  border-radius: 1px;
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  object-fit: contain;
+}
+.logo-name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--cyan), #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+h1 {
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+/* Form */
+.field {
+  margin-bottom: 14px;
+}
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+input[type=email], input[type=password] {
+  width: 100%;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+input:focus {
+  border-color: var(--cyan);
+}
+input::placeholder {
+  color: var(--muted);
+}
+
+.btn-primary {
+  width: 100%;
+  background: linear-gradient(135deg, var(--cyan), var(--cyan2));
+  color: #060912;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  border-radius: 8px;
+  padding: 11px;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: opacity 0.2s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.btn-primary:hover { opacity: 0.9; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+
+/* Error / info */
+.msg {
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: none;
+}
+.msg.error {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.25);
+  color: #fca5a5;
+}
+.msg.info {
+  background: rgba(0,200,224,0.08);
+  border: 1px solid rgba(0,200,224,0.2);
+  color: var(--cyan);
+}
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(6,9,18,0.3);
+  border-top-color: #060912;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Footer */
+.footer {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 24px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.tab-btn.active {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+/* Expired banner */
+.banner-expired {
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.25);
+  color: #fcd34d;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 20px;
+  display: none;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">
+    <img class="logo-icon" src="/icones/Logo.png" alt="Nucleus" onerror="this.style.display='none'">
+    <span class="logo-name">Nucleus</span>
+  </div>
+
+  <div class="banner-expired" id="banner-expired">
+    Sua sessão expirou após 120 dias. Faça login novamente.
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-login"   onclick="setMode('login')">Entrar</button>
+    <button class="tab-btn"        id="tab-signup"  onclick="setMode('signup')">Cadastrar</button>
+  </div>
+
+  <!-- E-mail -->
+  <div class="field">
+    <label for="inp-email">E-mail</label>
+    <input type="email" id="inp-email" placeholder="seu@email.com" autocomplete="email">
+  </div>
+
+  <!-- Senha -->
+  <div class="field">
+    <label for="inp-pass">Senha</label>
+    <input type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password">
+  </div>
+
+  <!-- Confirmar senha (só no cadastro) -->
+  <div class="field" id="field-confirm" style="display:none">
+    <label for="inp-confirm">Confirmar senha</label>
+    <input type="password" id="inp-confirm" placeholder="••••••••" autocomplete="new-password">
+  </div>
+
+  <button class="btn-primary" id="btn-submit" onclick="doSubmit()">Entrar</button>
+  <div id="forgot-row" style="text-align:right;margin-top:8px">
+    <button onclick="doForgotPassword()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit;padding:0;transition:color 0.2s"
+      onmouseover="this.style.color='var(--cyan)'" onmouseout="this.style.color='var(--muted)'">
+      Esqueci minha senha
+    </button>
+  </div>
+
+  <div class="msg" id="msg"></div>
+
+  <div class="footer">
+    Nucleus · Painel local para streamers
+  </div>
+</div>
+
+<script>
+let _sb   = null;
+let _mode = 'login'; // 'login' | 'signup'
+
+async function initSupabase() {
+  if (_sb) return _sb;
+  const res = await fetch('/auth/supabase/config');
+  const cfg = await res.json();
+  if (!cfg.enabled) {
+    showMsg('Supabase não configurado. Acesse /keys-config para configurar.', 'error');
+    return null;
+  }
+  _sb = supabase.createClient(cfg.url, cfg.anon_key);
+  return _sb;
+}
+
+// Mostra banner de sessão expirada
+if (new URLSearchParams(location.search).get('expired') === '1') {
+  document.getElementById('banner-expired').style.display = 'block';
+}
+
+// Se já logado, redireciona
+(async () => {
+  const sb = await initSupabase();
+  if (!sb) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) location.replace('/');
+})();
+
+// ── Alternância de modo ────────────────────────────────────────────────
+function setMode(mode) {
+  _mode = mode;
+  document.getElementById('tab-login').classList.toggle('active',  mode === 'login');
+  document.getElementById('tab-signup').classList.toggle('active', mode === 'signup');
+  document.getElementById('field-confirm').style.display = mode === 'signup' ? 'block' : 'none';
+  document.getElementById('btn-submit').textContent      = mode === 'login'  ? 'Entrar' : 'Criar conta';
+  document.getElementById('inp-pass').autocomplete      = mode === 'login'  ? 'current-password' : 'new-password';
+  document.getElementById('forgot-row').style.display   = mode === 'login'  ? 'block' : 'none';
+  document.getElementById('msg').style.display = 'none';
+  document.getElementById('inp-confirm').value = '';
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────
+function showMsg(text, type = 'error') {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg ' + type;
+  el.style.display = 'block';
+}
+
+function setLoading(loading) {
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = loading;
+  if (loading) {
+    btn.innerHTML = `<span class="spinner"></span>${_mode === 'login' ? 'Entrando...' : 'Criando conta...'}`;
+  } else {
+    btn.textContent = _mode === 'login' ? 'Entrar' : 'Criar conta';
+  }
+}
+
+// ── Ação do botão principal ────────────────────────────────────────────
+async function doSubmit() {
+  if (_mode === 'login') await doLogin();
+  else                   await doSignup();
+}
+
+async function doLogin() {
+  const email = document.getElementById('inp-email').value.trim();
+  const pass  = document.getElementById('inp-pass').value;
+  if (!email || !pass)                              { showMsg('Preencha e-mail e senha.');   return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMsg('Digite um e-mail válido.');    return; }
+
+  const sb = await initSupabase();
+  if (!sb) return;
+
+  setLoading(true);
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  setLoading(false);
+
+  if (error) {
+    const msgs = {
+      'Invalid login credentials': 'E-mail ou senha incorretos.',
+      'Email not confirmed':        'Confirme seu e-mail antes de entrar.',
+    };
+    showMsg(msgs[error.message] || error.message);
+    return;
+  }
+
+  localStorage.setItem('nucleus_login_ts', Date.now().toString());
+  location.replace('/');
+}
+
+async function doSignup() {
+  const email   = document.getElementById('inp-email').value.trim();
+  const pass    = document.getElementById('inp-pass').value;
+  const confirm = document.getElementById('inp-confirm').value;
+
+  if (!email || !pass)                              { showMsg('Preencha e-mail e senha.');          return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showMsg('Digite um e-mail válido.');           return; }
+  if (pass.length < 8)                            { showMsg('A senha deve ter no mínimo 8 caracteres.'); return; }
+  if (!/[A-Z]/.test(pass))      { showMsg('A senha deve conter pelo menos uma letra maiúscula.'); return; }
+  if (!/[^A-Za-z0-9]/.test(pass)) { showMsg('A senha deve conter pelo menos um caractere especial.'); return; }
+  if (pass !== confirm)         { showMsg('As senhas não coincidem.');                           return; }
+
+  const sb = await initSupabase();
+  if (!sb) return;
+
+  setLoading(true);
+  const { error } = await sb.auth.signUp({ email, password: pass });
+  setLoading(false);
+
+  if (error) {
+    const msgs = {
+      'User already registered': 'Este e-mail já está cadastrado. Faça login.',
+    };
+    showMsg(msgs[error.message] || error.message);
+    return;
+  }
+
+  showMsg('Conta criada! Verifique seu e-mail para confirmar o cadastro.', 'info');
+  setTimeout(() => setMode('login'), 4000);
+}
+
+
+async function doForgotPassword() {
+  const email = document.getElementById('inp-email').value.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showMsg('Digite seu e-mail no campo acima antes de recuperar a senha.');
+    return;
+  }
+  const sb = await initSupabase();
+  if (!sb) return;
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: `${location.origin}/auth/reset-password`,
+  });
+  if (error) showMsg(error.message);
+  else showMsg('E-mail de recuperação enviado! Verifique sua caixa de entrada.', 'info');
+}
+
+// Enter navega entre campos e submete
+document.getElementById('inp-email').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('inp-pass').focus();
+});
+document.getElementById('inp-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (_mode === 'signup') document.getElementById('inp-confirm').focus();
+    else doSubmit();
+  }
+});
+document.getElementById('inp-confirm').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSubmit();
+});
+</script>
+
+</body>
+</html>

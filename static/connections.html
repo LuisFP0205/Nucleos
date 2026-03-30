@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conexões — Nucleus</title>
+<script src="/static/supabase.js"></script>
+<script src="/static/nucleus-auth.js"></script>
+<style id="_ah">body{visibility:hidden!important}</style>
+<style>
+.nk-page { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+.nk-titlebar { height:40px; min-height:40px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; border-bottom:1px solid var(--border); background:var(--wrap); flex-shrink:0; }
+.nk-title { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.nk-body  { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+.nk-row { display:flex; align-items:center; }
+
+/* ── Table-style connection list ── */
+.conn-table { width:100%; border-collapse:collapse; }
+.conn-table th {
+  padding:7px 14px; text-align:left;
+  font-size:10px; font-weight:700; color:var(--muted);
+  text-transform:uppercase; letter-spacing:.8px;
+  border-bottom:1px solid var(--border);
+  background:var(--wrap);
+}
+.conn-row { border-bottom:1px solid var(--border); transition:background .1s; }
+.conn-row:hover { background:rgba(255,255,255,.025); }
+.conn-row td { padding:10px 14px; vertical-align:middle; }
+
+.plat-cell-tag { display:flex; align-items:center; gap:8px; }
+.plat-ico {
+  width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+  font-size:15px; flex-shrink:0; border-radius:var(--r2);
+  border:1px solid var(--border);
+}
+.plat-ico.twitch  { border-color:rgba(145,71,255,.35); color:#9147ff; background:rgba(145,71,255,.08); }
+.plat-ico.youtube { border-color:rgba(255,51,51,.35);  color:#ff5555; background:rgba(255,51,51,.08); }
+.plat-ico.kick    { border-color:rgba(83,252,24,.25);  color:#53fc18; background:rgba(83,252,24,.05); }
+.plat-ico.obs     { border-color:rgba(0,200,224,.25);  color:var(--cyan); background:rgba(0,200,224,.06); }
+.plat-iname { font-size:12.5px; font-weight:600; color:var(--text); }
+.plat-idesc { font-size:10.5px; color:var(--muted); margin-top:1px; }
+
+.td-channel { font-size:12px; color:var(--text); font-family:var(--mono); }
+.td-channel .none { color:var(--dim); font-family:inherit; font-size:11px; }
+
+/* OBS inline form */
+.obs-form { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.obs-form .nk-input { height:28px; font-size:11px; }
+.obs-host { width:130px; }
+.obs-port { width:80px; }
+.obs-pass { width:110px; }
+
+/* Confirm modal */
+.confirm-overlay {
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(4px);
+  align-items:center; justify-content:center;
+}
+.confirm-overlay.open { display:flex; }
+.confirm-box {
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:24px 28px; min-width:300px; max-width:380px;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+}
+.confirm-icon { font-size:28px; margin-bottom:10px; }
+.confirm-title { font-size:14px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.confirm-desc  { font-size:12px; color:var(--muted); margin-bottom:20px; line-height:1.5; }
+.confirm-btns  { display:flex; gap:8px; justify-content:flex-end; }
+</style>
+</head>
+<body>
+<script src="/static/nucleus-sidebar.js"></script>
+<div class="nk-page">
+  <div class="nk-titlebar">
+    <span class="nk-title">Conexões</span>
+    <button class="btn btn-ghost btn-sm" onclick="refreshAll()" title="Verificar tudo">↻</button>
+  </div>
+
+  <div class="nk-body" style="overflow-y:auto">
+    <table class="conn-table">
+      <thead>
+        <tr>
+          <th style="width:220px">Plataforma</th>
+          <th style="width:180px">Canal / Usuário</th>
+          <th>Status</th>
+          <th style="width:220px">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- Twitch -->
+        <tr class="conn-row" id="row-twitch">
+          <td><div class="plat-cell-tag"><div class="plat-ico twitch"><img src="/icones/twitch.png" alt="Twitch" style="width:18px;height:18px;object-fit:contain"></div><div><div class="plat-iname">Twitch</div><div class="plat-idesc">Chat · Helix API</div></div></div></td>
+          <td class="td-channel"><span id="ch-twitch"><span class="none">—</span></span></td>
+          <td><span class="badge badge-disc" id="st-twitch">DESCONECTADO</span></td>
+          <td><div class="nk-row" style="gap:6px">
+            <button class="btn btn-primary" id="btn-twitch"   onclick="connect('twitch')">Conectar</button>
+            <button class="btn btn-danger"  id="btndc-twitch" onclick="disconnect('twitch')" style="display:none">Desconectar</button>
+          </div></td>
+        </tr>
+
+        <!-- YouTube -->
+        <tr class="conn-row" id="row-youtube">
+          <td><div class="plat-cell-tag"><div class="plat-ico youtube"><img src="/icones/youtube.png" alt="YouTube" style="width:18px;height:18px;object-fit:contain"></div><div><div class="plat-iname">YouTube</div><div class="plat-idesc">Live · Chat · API v3</div></div></div></td>
+          <td class="td-channel"><span id="ch-youtube"><span class="none">—</span></span></td>
+          <td><span class="badge badge-disc" id="st-youtube">DESCONECTADO</span></td>
+          <td><div class="nk-row" style="gap:6px">
+            <button class="btn btn-primary" id="btn-youtube"   onclick="connect('youtube')">Conectar</button>
+            <button class="btn btn-danger"  id="btndc-youtube" onclick="disconnect('youtube')" style="display:none">Desconectar</button>
+          </div></td>
+        </tr>
+
+        <!-- Kick -->
+        <tr class="conn-row" id="row-kick">
+          <td><div class="plat-cell-tag"><div class="plat-ico kick"><img src="/icones/kick.png" alt="Kick" style="width:18px;height:18px;object-fit:contain"></div><div><div class="plat-iname">Kick</div><div class="plat-idesc">Chat · Beta API</div></div></div></td>
+          <td class="td-channel"><span id="ch-kick"><span class="none">—</span></span></td>
+          <td><span class="badge badge-disc" id="st-kick">DESCONECTADO</span></td>
+          <td><div class="nk-row" style="gap:6px">
+            <button class="btn btn-primary" id="btn-kick"   onclick="connect('kick')">Conectar</button>
+            <button class="btn btn-danger"  id="btndc-kick" onclick="disconnect('kick')" style="display:none">Desconectar</button>
+          </div></td>
+        </tr>
+
+        <!-- OBS -->
+        <tr class="conn-row" id="row-obs">
+          <td><div class="plat-cell-tag"><div class="plat-ico obs">◉</div><div><div class="plat-iname">OBS WebSocket</div><div class="plat-idesc">Cenas · Fontes</div></div></div></td>
+          <td class="td-channel">
+            <div class="obs-form">
+              <input class="nk-input obs-host" id="obs-host" value="localhost" placeholder="host">
+              <input class="nk-input obs-port" id="obs-port" value="4455" type="number" placeholder="port">
+              <input class="nk-input obs-pass" id="obs-pass" type="password" placeholder="senha (opcional)">
+            </div>
+          </td>
+          <td><span class="badge badge-disc" id="st-obs">DESCONECTADO</span><br><span style="font-size:10px;color:var(--dim);font-family:var(--mono)" id="obs-scene-info"></span></td>
+          <td><div class="nk-row" style="gap:6px">
+            <button class="btn btn-primary" id="btn-obs"   onclick="connectOBS()">Conectar</button>
+            <button class="btn btn-danger"  id="btndc-obs" onclick="disconnectOBS()" style="display:none">Desconectar</button>
+          </div></td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div><!-- /nk-body -->
+</div>
+
+<!-- Confirm modal -->
+<div class="confirm-overlay" id="confirm-modal">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirm-icon">⚠️</div>
+    <div class="confirm-title" id="confirm-title">Confirmar</div>
+    <div class="confirm-desc"  id="confirm-desc"></div>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost"   id="confirm-cancel" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn btn-danger"  id="confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+NucleusAuth.guard();
+(function(){
+  function setRow(id, state, label, channel){
+    const badges={connected:"badge-conn",disconnected:"badge-disc",loading:"badge-warn",error:"badge-err"};
+    const labels={connected:"CONECTADO",disconnected:"DESCONECTADO",loading:"CONECTANDO...",error:"ERRO"};
+    const st=document.getElementById("st-"+id);
+    const bc=document.getElementById("btn-"+id);
+    const bd=document.getElementById("btndc-"+id);
+    const ch=document.getElementById("ch-"+id);
+    if(st){st.className="badge "+badges[state];st.textContent=label||labels[state];}
+    if(bc)bc.style.display=state==="connected"?"none":"";
+    if(bd)bd.style.display=state==="connected"?"":"none";
+    if(ch&&channel!=null)ch.innerHTML=channel?`<span style="font-family:var(--mono)">${channel}</span>`:`<span class="none">—</span>`;
+  }
+
+  async function loadAuth(){
+    try{
+      const r=await fetch("/auth/status");if(!r.ok)return;
+      const d=await r.json();
+      if(d.twitch?.authenticated){setRow("twitch","connected",null,d.twitch.login||d.twitch.channel||"");}
+      else setRow("twitch","disconnected",null,null);
+      if(d.youtube?.authenticated){
+        const yr=await fetch("/auth/youtube/token-info");
+        const yd=yr.ok?await yr.json():{};
+        setRow("youtube","connected",null,yd.channel_name||d.youtube.channel_id||"");
+      } else setRow("youtube","disconnected",null,null);
+      if(d.kick?.authenticated){
+        const kr=await fetch("/auth/kick/token-info");
+        const kd=kr.ok?await kr.json():{};
+        setRow("kick","connected",null,kd.username||"");
+      } else setRow("kick","disconnected",null,null);
+    }catch(_){}
+  }
+
+  // Salva canais conectados no perfil do Supabase
+  async function saveChannelsToSupabase(){
+    try{
+      const [sr, yr, kr] = await Promise.all([
+        fetch("/auth/status"),
+        fetch("/auth/youtube/token-info"),
+        fetch("/auth/kick/token-info"),
+      ]);
+      const st = sr.ok ? await sr.json() : {};
+      const yt = yr.ok ? await yr.json() : {};
+      const ki = kr.ok ? await kr.json() : {};
+      await NucleusAuth.saveSettings({
+        twitch_channel:    st.twitch?.login        || "",
+        youtube_channel_id:yt.channel_id           || st.youtube?.channel_id || "",
+        kick_channel:      ki.username             || "",
+      });
+    }catch(_){}
+  }
+
+
+  async function loadOBS(){
+    try{
+      const r=await fetch("/obs/status");if(!r.ok)return;
+      const d=await r.json();
+      if(d.host)document.getElementById("obs-host").value=d.host;
+      if(d.port)document.getElementById("obs-port").value=d.port;
+      if(d.connected){
+        setRow("obs","connected",null);
+        const si=document.getElementById("obs-scene-info");
+        if(si)si.textContent=d.current_scene||"";
+      } else setRow("obs","disconnected",null);
+    }catch(_){}
+  }
+
+  const OAUTH={twitch:"/auth/twitch",youtube:"/auth/youtube",kick:"/auth/kick"};
+  window.connect=function(p){
+    setRow(p,"loading");
+    const pop=window.open(OAUTH[p],"oauth_"+p,"width=520,height=680");
+    const bc=new BroadcastChannel("nucleus_oauth");
+    bc.onmessage=e=>{
+      if(e.data?.platform===p&&e.data?.success){bc.close();pop?.close();NucleusToast(`${p} conectado`,"ok");loadAuth();setTimeout(saveChannelsToSupabase,1500);}
+    };
+    const iv=setInterval(()=>{if(!pop||pop.closed){clearInterval(iv);bc.close();setTimeout(loadAuth,800);}},800);
+  };
+  const PLAT_LABEL={twitch:"Twitch",youtube:"YouTube",kick:"Kick"};
+  function showConfirm({icon,title,desc,onOk}){
+    document.getElementById("confirm-icon").textContent=icon||"⚠️";
+    document.getElementById("confirm-title").textContent=title||"Confirmar";
+    document.getElementById("confirm-desc").textContent=desc||"";
+    document.getElementById("confirm-ok").onclick=()=>{closeConfirm();onOk();};
+    document.getElementById("confirm-modal").classList.add("open");
+  }
+  window.closeConfirm=function(){document.getElementById("confirm-modal").classList.remove("open");};
+  document.getElementById("confirm-modal").addEventListener("click",e=>{if(e.target===e.currentTarget)closeConfirm();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeConfirm();});
+
+  window.disconnect=function(p){
+    const label=PLAT_LABEL[p]||p;
+    showConfirm({
+      icon:"🔌",
+      title:`Desconectar ${label}?`,
+      desc:`Você será desconectado da plataforma ${label}. O chat e a detecção de live serão pausados.`,
+      onOk:async()=>{
+        await fetch(`/auth/${p}/logout`,{method:"POST"});
+        setRow(p,"disconnected",null,null);
+        NucleusToast(`${label} desconectado`,"info");
+      }
+    });
+  };
+  window.connectOBS=async function(){
+    setRow("obs","loading");
+    const r=await fetch("/obs/connect",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+      host:document.getElementById("obs-host").value||"localhost",
+      port:parseInt(document.getElementById("obs-port").value)||4455,
+      password:document.getElementById("obs-pass").value||""
+    })});
+    if(r.ok){NucleusToast("OBS conectado","ok");loadOBS();}
+    else{setRow("obs","error");NucleusToast("Falha ao conectar OBS","error");}
+  };
+  window.disconnectOBS=async function(){
+    await fetch("/obs/disconnect",{method:"POST"});
+    setRow("obs","disconnected",null);
+    NucleusToast("OBS desconectado","info");
+  };
+  window.refreshAll=()=>{loadAuth();loadOBS();NucleusToast("Atualizado","info",1200);};
+
+  loadAuth();loadOBS();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+# ── Credenciais e segredos — NUNCA commitar ─────────────────
+.env
+tokens.key
+tokens.enc
+
+# ── Dados de runtime (gerados pelo app em uso) ───────────────
+runtime_settings.json
+commands.json
+chat_history.json
+analytics_events.json
+analytics_viewers.json
+overlay_themes.json
+overlay_viewers_positions.json
+overlay_custom_layouts.json
+
+# ── Build / distribuição ─────────────────────────────────────
+dist/
+build/
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# ── PyInstaller ──────────────────────────────────────────────
+# Mantém o nucleus.spec (necessário para rebuildar)
+# Ignora specs gerados automaticamente
+*.spec.bak
+
+# ── Claude Code (configurações locais da sessão) ─────────────
+.claude/
+
+# ── Imagens do guia (prints pessoais, não vão pro repo) ──────
+static/guide-images/
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ── IDE ──────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user

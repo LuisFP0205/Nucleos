@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nucleus · Temas de Overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Tema -->
+<script src="/static/theme.js"></script>
+<style id="_ah">body{visibility:hidden!important}</style>
+<script src="/static/supabase.js"></script>
+<script src="/static/nucleus-auth.js"></script>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:     #060912;
+  --card:   #0e1120;
+  --card2:  #141828;
+  --border: rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.12);
+  --text:   #dde3f0;
+  --muted:  #4b5478;
+  --dim:    #252b42;
+  --cyan:   #00c8e0;
+  --purple: #9147ff;
+  --gold:   #f59e0b;
+  --green:  #22c55e;
+  --red:    #ef4444;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+body {
+  background: var(--bg);
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0;
+  background: rgba(6,9,18,0.92);
+  backdrop-filter: blur(14px);
+  z-index: 200;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.back-btn {
+  font-size: 13px; color: var(--muted); text-decoration: none;
+  display: flex; align-items: center; gap: 6px; transition: color 0.2s;
+}
+.back-btn:hover { color: var(--text); }
+.logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+.logo-icon { width: 26px; height: 26px; }
+.logo-name {
+  font-size: 17px; font-weight: 700;
+  background: linear-gradient(135deg, var(--cyan), #a78bfa);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.page-subtitle { font-size: 13px; color: var(--muted); }
+
+.plan-badge {
+  font-size: 10px; font-weight: 700; padding: 3px 10px;
+  border-radius: 20px; text-transform: uppercase; letter-spacing: .5px;
+}
+.plan-badge.premium { background: rgba(245,158,11,0.14); color: var(--gold); border: 1px solid rgba(245,158,11,0.3); }
+.plan-badge.free    { background: var(--dim); color: var(--muted); }
+
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+.tabs-wrap {
+  display: flex; gap: 4px;
+  padding: 28px 32px 0;
+  max-width: 940px; margin: 0 auto;
+}
+.tab {
+  padding: 9px 22px;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  background: transparent;
+  border: 1px solid var(--border2);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  color: var(--muted);
+  cursor: pointer; transition: all 0.18s;
+}
+.tab:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.tab.active { background: var(--card); color: var(--cyan); border-color: var(--border2); }
+
+/* ── Panels ─────────────────────────────────────────────────────────── */
+.panels-wrap { max-width: 940px; margin: 0 auto; padding: 0 32px 32px; }
+.panel { display: none; }
+.panel.active { display: block; }
+.panel-inner {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 0 16px 16px 16px;
+  overflow: hidden;
+}
+
+/* ── Preview ─────────────────────────────────────────────────────── */
+.preview-area {
+  background: repeating-conic-gradient(#0e1120 0% 25%, #0a0d1a 0% 50%) 0 0 / 20px 20px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 36px 24px; position: relative;
+  border-bottom: 1px solid var(--border);
+}
+.preview-area iframe {
+  border: none; background: transparent; pointer-events: none; display: block;
+}
+.preview-area .iframe-viewers { pointer-events: none; }
+.frame-chat    { width: 420px; height: 360px; }
+.frame-music   { width: 380px; height: 80px; }
+.frame-viewers { width: 100%; height: 270px; }
+
+.pv-label {
+  position: absolute; top: 10px; left: 14px;
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  background: rgba(6,9,18,0.7); padding: 2px 7px; border-radius: 4px;
+}
+.pv-note {
+  position: absolute; bottom: 8px; right: 12px;
+  font-size: 10px; color: var(--muted);
+}
+
+/* ── Theme Section ─────────────────────────────────────────────────── */
+.theme-section {
+  padding: 24px 28px;
+  border-bottom: 1px solid var(--border);
+}
+.ts-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+}
+.ts-title { font-size: 14px; font-weight: 700; }
+.ts-premium-tag {
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+  background: rgba(245,158,11,0.12); color: var(--gold);
+  border: 1px solid rgba(245,158,11,0.25); text-transform: uppercase; letter-spacing: .4px;
+}
+.ts-feedback {
+  margin-left: auto; font-size: 11px; color: var(--green);
+  opacity: 0; transition: opacity 0.3s; font-weight: 600;
+}
+.ts-feedback.show { opacity: 1; }
+
+/* ── Theme Cards Grid ───────────────────────────────────────────────── */
+.ts-grid { display: flex; gap: 12px; flex-wrap: wrap; position: relative; }
+.ts-card {
+  width: 148px; border-radius: 12px;
+  border: 2px solid var(--border2);
+  overflow: hidden; cursor: pointer;
+  transition: border-color 0.2s, transform 0.12s;
+  background: var(--card2);
+  user-select: none;
+}
+.ts-card:hover { border-color: rgba(255,255,255,0.28); transform: translateY(-3px); }
+.ts-card.active { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(0,200,224,0.12); }
+.ts-card.ts-locked {
+  opacity: 0.5; cursor: default;
+  position: relative;
+}
+.ts-card.ts-locked:hover { transform: none; border-color: var(--border2); }
+.ts-card.ts-locked::after {
+  content: '★';
+  position: absolute; top: 6px; right: 7px;
+  font-size: 10px; font-weight: 900; color: var(--gold);
+  background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 8px; padding: 1px 5px;
+  pointer-events: none;
+}
+
+.ts-mock { height: 108px; position: relative; overflow: hidden; }
+.ts-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 11px;
+  border-top: 1px solid var(--border);
+}
+.ts-name { font-size: 11px; font-weight: 600; color: var(--muted); }
+.ts-card.active .ts-name { color: var(--cyan); }
+.ts-check { font-size: 11px; font-weight: 800; color: var(--cyan); opacity: 0; }
+.ts-card.active .ts-check { opacity: 1; }
+
+/* ── Mock: RETRO shared ──────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Bungee&display=swap');
+
+/* ── Mock: CHAT ─────────────────────────────────────────────────────── */
+.mock-chat {
+  padding: 9px 10px; display: flex; flex-direction: column; gap: 6px; height: 100%;
+}
+.mc-row { display: flex; gap: 5px; align-items: flex-start; line-height: 1.3; }
+.mc-user { font-size: 8px; font-weight: 700; flex-shrink: 0; }
+.mc-text { font-size: 8px; color: rgba(255,255,255,0.75); }
+
+.mock-minimal-chat {
+  background: rgba(0,0,0,0.6); border-left: 3px solid var(--purple);
+}
+.mock-minimal-chat .mc-user { color: var(--purple); }
+
+.mock-twitch-chat {
+  background: rgba(14,7,30,0.92);
+  border: 1px solid rgba(145,71,255,0.35); border-radius: 4px;
+}
+.mock-twitch-chat .mc-row {
+  background: rgba(145,71,255,0.09); border-radius: 4px; padding: 4px 5px;
+}
+.mock-twitch-chat .mc-user { color: #bf94ff; }
+
+.mock-neon-chat {
+  background: #000;
+  border: 1px solid rgba(145,71,255,0.65);
+  box-shadow: inset 0 0 12px rgba(145,71,255,0.08);
+}
+.mock-neon-chat .mc-user { color: var(--cyan); text-shadow: 0 0 7px rgba(0,200,224,0.9); }
+.mock-neon-chat .mc-text { color: rgba(255,255,255,0.9); text-shadow: 0 0 4px rgba(255,255,255,0.25); }
+
+.mock-light-chat {
+  background: rgba(255,255,255,0.92); border-left: 3px solid var(--purple);
+}
+.mock-light-chat .mc-user { color: #5c3d9e; }
+.mock-light-chat .mc-text { color: #2a2a2a; }
+
+.mock-boxside-chat {
+  background: transparent; border-left: 4px solid var(--purple); padding-left: 12px;
+}
+.mock-boxside-chat .mc-user { color: var(--purple); }
+.mock-boxside-chat .mc-text { color: rgba(221,227,240,0.7); }
+
+.mock-retro-chat {
+  background: rgba(0, 12, 0, 0.92);
+  border-left: 2px solid #00ff41;
+  box-shadow: inset 0 0 10px rgba(0,255,65,0.05);
+  font-family: 'VT323', monospace;
+  position: relative;
+  overflow: hidden;
+}
+.mock-retro-chat::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px);
+}
+.mock-retro-chat .mc-user { color: #00ff41; font-family: 'VT323', monospace; font-size: 9px; text-shadow: 0 0 5px rgba(0,255,65,0.8); }
+.mock-retro-chat .mc-user::before { content: '['; }
+.mock-retro-chat .mc-user::after  { content: ']'; }
+.mock-retro-chat .mc-text { color: #a8ffa8; font-family: 'VT323', monospace; font-size: 9px; }
+.mock-retro-chat .mc-text::before { content: '> '; color: #00ff41; opacity: 0.6; }
+
+/* ── Mock: MUSIC ─────────────────────────────────────────────────────── */
+.mock-music {
+  display: flex; align-items: center; gap: 9px; padding: 11px; height: 100%;
+}
+.mm-thumb {
+  width: 44px; height: 44px; border-radius: 5px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: rgba(255,255,255,0.3);
+}
+.mm-info { flex: 1; overflow: hidden; }
+.mm-title { font-size: 8px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mm-artist { font-size: 7px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+.mm-bar {
+  height: 2px; background: rgba(255,255,255,0.15); border-radius: 1px;
+  margin-top: 6px; position: relative;
+}
+.mm-bar::after {
+  content:''; position: absolute; left:0; top:0; height:100%; width:42%;
+  border-radius: 1px;
+}
+
+.mock-minimal-music { background: rgba(0,0,0,0.65); border-left: 3px solid var(--purple); }
+.mock-minimal-music .mm-thumb { background: rgba(145,71,255,0.15); }
+.mock-minimal-music .mm-bar::after { background: var(--purple); }
+
+.mock-twitch-music { background: rgba(14,7,30,0.92); border: 1px solid rgba(145,71,255,0.4); border-radius: 6px; }
+.mock-twitch-music .mm-thumb { background: rgba(145,71,255,0.2); border-radius: 50%; }
+.mock-twitch-music .mm-bar::after { background: var(--purple); }
+
+.mock-neon-music { background: #000; border: 1px solid rgba(0,200,224,0.65); box-shadow: 0 0 10px rgba(0,200,224,0.15); }
+.mock-neon-music .mm-thumb { background: rgba(0,200,224,0.1); }
+.mock-neon-music .mm-title { color: var(--cyan); text-shadow: 0 0 7px rgba(0,200,224,0.8); }
+.mock-neon-music .mm-bar::after { background: var(--cyan); box-shadow: 0 0 4px var(--cyan); }
+
+.mock-light-music { background: rgba(255,255,255,0.92); border-radius: 6px; }
+.mock-light-music .mm-thumb { background: rgba(0,0,0,0.08); }
+.mock-light-music .mm-title { color: #1a1a2e; }
+.mock-light-music .mm-artist { color: #666; }
+.mock-light-music .mm-bar { background: rgba(0,0,0,0.12); }
+.mock-light-music .mm-bar::after { background: var(--purple); }
+
+.mock-boxside-music { background: transparent; border-left: 4px solid var(--purple); }
+.mock-boxside-music .mm-thumb { background: rgba(145,71,255,0.12); }
+.mock-boxside-music .mm-bar::after { background: var(--purple); }
+
+.mock-retro-music {
+  background: rgba(0, 12, 0, 0.92);
+  border: 1px solid #00ff41;
+  border-radius: 0;
+  box-shadow: 0 0 8px rgba(0,255,65,0.15), inset 0 0 12px rgba(0,255,65,0.04);
+  position: relative; overflow: hidden;
+}
+.mock-retro-music::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px);
+}
+.mock-retro-music .mm-thumb { background: rgba(0,255,65,0.12); border: 1px solid #00ff41; border-radius: 0; }
+.mock-retro-music .mm-title { color: #00ff41; font-family: 'VT323', monospace; font-size: 11px; text-shadow: 0 0 6px rgba(0,255,65,0.7); }
+.mock-retro-music .mm-artist { color: #4dff80; font-family: 'VT323', monospace; font-size: 9px; }
+.mock-retro-music .mm-bar { background: rgba(0,255,65,0.12); }
+.mock-retro-music .mm-bar::after { background: #00ff41; box-shadow: 0 0 4px #00ff41; }
+
+/* ── Mock: VIEWERS ─────────────────────────────────────────────────── */
+.mock-viewers {
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 7px; padding: 10px 12px; height: 100%;
+}
+.mv-row { display: flex; align-items: center; gap: 6px; }
+.mv-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.mv-platform { font-size: 7px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; width: 22px; }
+.mv-count { font-size: 13px; font-weight: 800; margin-left: auto; }
+.mv-label { font-size: 7px; color: rgba(255,255,255,0.35); margin-left: 3px; }
+
+.mock-minimal-viewers { background: rgba(0,0,0,0.45); }
+.mock-minimal-viewers .mv-dot { background: var(--green); }
+
+.mock-twitch-viewers { background: rgba(14,7,30,0.88); border: 1px solid rgba(145,71,255,0.3); border-radius: 4px; }
+.mock-twitch-viewers .mv-row { background: rgba(145,71,255,0.09); border-radius: 4px; padding: 4px 6px; }
+.mock-twitch-viewers .mv-dot { background: var(--green); box-shadow: 0 0 5px var(--green); }
+
+.mock-neon-viewers { background: #000; border: 1px solid rgba(145,71,255,0.55); }
+.mock-neon-viewers .mv-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.mock-neon-viewers .mv-count { text-shadow: 0 0 7px rgba(255,255,255,0.5); }
+
+.mock-light-viewers { background: rgba(255,255,255,0.9); border-radius: 4px; }
+.mock-light-viewers .mv-dot { background: var(--green); }
+.mock-light-viewers .mv-label { color: #888; }
+
+.mock-boxside-viewers { background: transparent; border-left: 4px solid var(--purple); padding-left: 14px; }
+.mock-boxside-viewers .mv-dot { display: none; }
+.mock-boxside-viewers .mv-platform { display: none; }
+.mock-boxside-viewers .mv-count { font-size: 16px; margin-left: 0; }
+.mock-boxside-viewers .mv-label { color: rgba(255,255,255,0.45); }
+
+.mock-retro-viewers {
+  background: rgba(0, 12, 0, 0.92);
+  border: 1px solid #00ff41;
+  border-radius: 0;
+  box-shadow: 0 0 8px rgba(0,255,65,0.15);
+  position: relative; overflow: hidden;
+}
+.mock-retro-viewers::after {
+  content: '';
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px);
+}
+.mock-retro-viewers .mv-dot { background: #00ff41 !important; box-shadow: 0 0 5px #00ff41; }
+.mock-retro-viewers .mv-platform { color: #4dff80; font-family: 'VT323', monospace; font-size: 9px; }
+.mock-retro-viewers .mv-count { color: #00ff41; font-family: 'VT323', monospace; font-size: 16px; text-shadow: 0 0 6px rgba(0,255,65,0.7); }
+.mock-retro-viewers .mv-label { color: rgba(0,255,65,0.35); font-family: 'VT323', monospace; }
+
+/* ── Mock: RADIO 80s ─────────────────────────────────────────────────── */
+.mock-retro80-chat {
+  background: rgba(15, 0, 22, 0.92);
+  border-left: 3px solid #ff1a8c;
+  box-shadow: inset 0 0 12px rgba(255,26,140,0.05);
+}
+.mock-retro80-chat .mc-user {
+  font-family: 'Bungee', sans-serif; font-size: 8px; font-weight: 400;
+  background: linear-gradient(90deg, #ff1a8c, #ff8c00);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.mock-retro80-chat .mc-text { color: #ffd6e8; }
+
+.mock-retro80-music {
+  background: rgba(15, 0, 22, 0.92);
+  border: 1px solid #ff1a8c;
+  border-radius: 4px;
+  box-shadow: 0 0 12px rgba(255,26,140,0.2), inset 0 0 14px rgba(255,26,140,0.05);
+  position: relative; overflow: hidden;
+}
+.mock-retro80-music .mm-thumb { background: rgba(255,26,140,0.15); border: 1px solid rgba(255,26,140,0.4); border-radius: 4px; }
+.mock-retro80-music .mm-title {
+  font-family: 'Bungee', sans-serif; font-size: 9px;
+  background: linear-gradient(90deg, #ff1a8c, #ff8c00);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.mock-retro80-music .mm-artist { color: #ff8cc8; }
+.mock-retro80-music .mm-bar { background: rgba(255,26,140,0.15); }
+.mock-retro80-music .mm-bar::after { background: linear-gradient(90deg, #ff1a8c, #ff8c00); box-shadow: 0 0 4px rgba(255,26,140,0.6); }
+
+.mock-retro80-viewers {
+  background: rgba(15, 0, 22, 0.92);
+  border: 1px solid #ff1a8c;
+  border-radius: 3px;
+  box-shadow: 0 0 10px rgba(255,26,140,0.18);
+}
+.mock-retro80-viewers .mv-dot { background: #ff1a8c !important; box-shadow: 0 0 6px #ff1a8c; }
+.mock-retro80-viewers .mv-platform { color: #ff8cc8; font-size: 7px; font-weight: 700; }
+.mock-retro80-viewers .mv-count {
+  font-family: 'Bungee', sans-serif; font-size: 13px;
+  background: linear-gradient(90deg, #ff1a8c, #ff8c00);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.mock-retro80-viewers .mv-label { color: rgba(255,140,200,0.4); }
+
+/* ── Premium Lock ────────────────────────────────────────────────────── */
+.lock-wrap { position: relative; }
+.premium-lock {
+  display: none;
+  position: absolute; inset: -4px; z-index: 10;
+  background: rgba(6,9,18,0.82); backdrop-filter: blur(5px);
+  border-radius: 10px;
+  flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+}
+.premium-lock.visible { display: flex; }
+.lock-icon  { font-size: 26px; color: var(--gold); }
+.lock-title { font-size: 14px; font-weight: 700; color: var(--gold); }
+.lock-desc  { font-size: 12px; color: var(--muted); text-align: center; max-width: 240px; }
+.lock-btn {
+  margin-top: 6px; padding: 8px 22px;
+  background: linear-gradient(135deg, var(--gold), #ef4444);
+  color: #fff; border-radius: 8px; font-size: 13px; font-weight: 700;
+  text-decoration: none; transition: opacity 0.18s;
+}
+.lock-btn:hover { opacity: 0.86; }
+
+/* ── URL Row ─────────────────────────────────────────────────────── */
+.url-section { padding: 20px 28px; }
+.url-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 10px 14px;
+}
+.url-lbl  { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.url-text { flex: 1; font-size: 12px; font-family: Consolas, monospace; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn-copy {
+  background: rgba(145,71,255,0.14); border: 1px solid rgba(145,71,255,0.32);
+  color: #bf94ff; border-radius: 6px; padding: 5px 13px;
+  font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.15s;
+}
+.btn-copy:hover  { background: rgba(145,71,255,0.28); }
+.btn-copy.copied { background: rgba(34,197,94,0.14); border-color: rgba(34,197,94,0.3); color: #4ade80; }
+
+/* ── Overlay description row ─────────────────────────────────────── */
+.ov-desc {
+  padding: 18px 28px 0;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+}
+.ov-desc-text { font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 520px; }
+.ov-tags { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+.ov-tag {
+  font-size: 10px; font-weight: 600;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border2);
+  border-radius: 5px; padding: 3px 9px; color: var(--muted);
+  white-space: nowrap;
+}
+.ov-tag.purple { color: #bf94ff; border-color: rgba(145,71,255,0.28); background: rgba(145,71,255,0.08); }
+.ov-tag.green  { color: #4ade80; border-color: rgba(74,222,128,0.28); background: rgba(74,222,128,0.08); }
+
+/* ── Modo claro ─────────────────────────────────────────────────── */
+html[data-theme="light"] {
+  --bg:     #e8ecf6;
+  --card:   #ffffff;
+  --card2:  #f0f3fb;
+  --border: rgba(15,25,80,0.09);
+  --border2:rgba(15,25,80,0.15);
+  --text:   #0d1229;
+  --muted:  #5e6d96;
+  --dim:    #b8c3df;
+}
+html[data-theme="light"] body { background: var(--bg); color: var(--text); }
+html[data-theme="light"] .ov-tag { background: rgba(0,0,0,0.05); border-color: rgba(15,25,80,0.15); color: var(--muted); }
+
+/* Embedded mode — hide header, remove extra padding */
+body.embedded #page-header { display: none; }
+body.embedded { padding-top: 0; }
+body.embedded .tabs-wrap { padding-top: 16px; }
+</style>
+</head>
+<body>
+<script>
+// Embedded mode: hide header, sync theme from parent
+(function(){
+  const p = new URLSearchParams(location.search);
+  if(p.get('embedded')==='1'){
+    document.body.classList.add('embedded');
+    // Inherit theme from parent window
+    try{
+      const pt = window.parent.document.documentElement.getAttribute('data-theme')||'dark';
+      document.documentElement.setAttribute('data-theme', pt);
+    }catch(_){}
+  }
+})();
+</script>
+
+<!-- Header (hidden in embedded mode) -->
+<div class="page-header" id="page-header">
+  <div class="header-left">
+    <a class="back-btn" href="/">← Dashboard</a>
+    <a class="logo" href="/">
+      <img class="logo-icon" src="/icones/Logo.png" alt="" onerror="this.style.display='none'">
+      <span class="logo-name">Nucleus</span>
+    </a>
+    <span class="page-subtitle">· Temas de Overlay</span>
+  </div>
+  <span id="plan-badge" class="plan-badge free">Free</span>
+</div>
+
+<!-- Tabs -->
+<div class="tabs-wrap">
+  <button class="tab active" data-tab="chat"    onclick="switchTab('chat')">Chat</button>
+  <button class="tab"        data-tab="music"   onclick="switchTab('music')">Music</button>
+  <button class="tab"        data-tab="viewers" onclick="switchTab('viewers')">Viewers</button>
+  <button class="tab"        data-tab="cam"     onclick="switchTab('cam')">Camera</button>
+  <button class="tab"        data-tab="countdown" onclick="switchTab('countdown')">Countdown</button>
+</div>
+
+<!-- Panels -->
+<div class="panels-wrap">
+
+  <!-- ── CHAT ─────────────────────────────────────────────────────── -->
+  <div class="panel active" id="panel-chat">
+    <div class="panel-inner">
+
+      <div class="preview-area">
+        <span class="pv-label">Preview ao vivo</span>
+        <iframe class="frame-chat" id="iframe-chat" src="/overlay/chat?v=preview" scrolling="no" allowtransparency="true"></iframe>
+        <span class="pv-note">Mensagens reais quando ao vivo</span>
+      </div>
+
+      <div class="ov-desc">
+        <p class="ov-desc-text">Exibe mensagens em tempo real com suporte a emotes da Twitch, Kick e YouTube. Novas mensagens entram pelo topo e somem após o tempo configurado.</p>
+        <div class="ov-tags">
+          <span class="ov-tag purple">WebSocket</span>
+          <span class="ov-tag green">Twitch · YouTube · Kick</span>
+          <span class="ov-tag">420 × 600 px</span>
+        </div>
+      </div>
+
+      <div class="theme-section">
+        <div class="ts-header">
+          <span class="ts-title">Escolha o tema</span>
+          <span class="ts-premium-tag">Premium</span>
+          <span class="ts-feedback" id="fb-chat">✓ Tema aplicado</span>
+        </div>
+        <div class="lock-wrap">
+          <div class="ts-grid" id="tg-chat">
+
+            <div class="ts-card active" data-overlay="chat" data-theme="minimal">
+              <div class="ts-mock mock-minimal-chat mock-chat">
+                <div class="mc-row"><span class="mc-user">StreamerPT</span><span class="mc-text">Bem-vindos à live!</span></div>
+                <div class="mc-row"><span class="mc-user">viewer123</span><span class="mc-text">Olá galera! LUL</span></div>
+                <div class="mc-row"><span class="mc-user">twitchfan</span><span class="mc-text">PogChamp hype!</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Minimal</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="chat" data-theme="twitch">
+              <div class="ts-mock mock-twitch-chat mock-chat">
+                <div class="mc-row"><span class="mc-user">StreamerPT</span><span class="mc-text">Bem-vindos à live!</span></div>
+                <div class="mc-row"><span class="mc-user">viewer123</span><span class="mc-text">Olá galera! LUL</span></div>
+                <div class="mc-row"><span class="mc-user">twitchfan</span><span class="mc-text">PogChamp hype!</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Twitch Style</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="chat" data-theme="neon">
+              <div class="ts-mock mock-neon-chat mock-chat">
+                <div class="mc-row"><span class="mc-user">StreamerPT</span><span class="mc-text">Bem-vindos à live!</span></div>
+                <div class="mc-row"><span class="mc-user">viewer123</span><span class="mc-text">Olá galera! LUL</span></div>
+                <div class="mc-row"><span class="mc-user">twitchfan</span><span class="mc-text">PogChamp hype!</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Neon / Glow</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="chat" data-theme="light">
+              <div class="ts-mock mock-light-chat mock-chat">
+                <div class="mc-row"><span class="mc-user">StreamerPT</span><span class="mc-text">Bem-vindos à live!</span></div>
+                <div class="mc-row"><span class="mc-user">viewer123</span><span class="mc-text">Olá galera! LUL</span></div>
+                <div class="mc-row"><span class="mc-user">twitchfan</span><span class="mc-text">PogChamp hype!</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Clean Light</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="chat" data-theme="boxside">
+              <div class="ts-mock mock-boxside-chat mock-chat">
+                <div class="mc-row"><span class="mc-user">StreamerPT</span><span class="mc-text">Bem-vindos à live!</span></div>
+                <div class="mc-row"><span class="mc-user">viewer123</span><span class="mc-text">Olá galera! LUL</span></div>
+                <div class="mc-row"><span class="mc-user">twitchfan</span><span class="mc-text">PogChamp hype!</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Box Side</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="chat" data-theme="retro80">
+              <div class="ts-mock mock-retro80-chat mock-chat">
+                <div class="mc-row"><span class="mc-user">StreamerPT</span><span class="mc-text">Bem-vindos à live!</span></div>
+                <div class="mc-row"><span class="mc-user">viewer123</span><span class="mc-text">Olá galera! LUL</span></div>
+                <div class="mc-row"><span class="mc-user">twitchfan</span><span class="mc-text">PogChamp hype!</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Radio 80s</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="chat" data-theme="retro">
+              <div class="ts-mock mock-retro-chat mock-chat">
+                <div class="mc-row"><span class="mc-user">StreamerPT</span><span class="mc-text">Bem-vindos à live!</span></div>
+                <div class="mc-row"><span class="mc-user">viewer123</span><span class="mc-text">Olá galera! LUL</span></div>
+                <div class="mc-row"><span class="mc-user">twitchfan</span><span class="mc-text">PogChamp hype!</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Retro CRT</span><span class="ts-check">✓</span></div>
+            </div>
+
+          </div>
+          <div class="premium-lock" id="lock-chat">
+            <span class="lock-icon">★</span>
+            <span class="lock-title">Recurso Premium</span>
+            <span class="lock-desc">Temas de overlay estão disponíveis no plano Premium</span>
+            <a class="lock-btn" href="/plans">Ver planos</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="url-section">
+        <div class="url-row">
+          <span class="url-lbl">URL</span>
+          <span class="url-text" id="url-chat">http://localhost:3000/overlay/chat</span>
+          <button class="btn-copy" onclick="copyUrl('url-chat', this)">Copiar</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── MUSIC ─────────────────────────────────────────────────────── -->
+  <div class="panel" id="panel-music">
+    <div class="panel-inner">
+
+      <div class="preview-area">
+        <span class="pv-label">Preview ao vivo</span>
+        <iframe class="frame-music" id="iframe-music" src="/overlay/music?v=preview" scrolling="no" allowtransparency="true"></iframe>
+        <span class="pv-note">Aparece automaticamente quando música está tocando</span>
+      </div>
+
+      <div class="ov-desc">
+        <p class="ov-desc-text">Exibe a música atual com capa do álbum, título e artista. Atualiza automaticamente via Windows GSMTC. Desaparece quando nada está tocando.</p>
+        <div class="ov-tags">
+          <span class="ov-tag purple">Polling 3s</span>
+          <span class="ov-tag green">GSMTC · Spotify · YT Music</span>
+          <span class="ov-tag">340 × 80 px</span>
+        </div>
+      </div>
+
+      <div class="theme-section">
+        <div class="ts-header">
+          <span class="ts-title">Escolha o tema</span>
+          <span class="ts-premium-tag">Premium</span>
+          <span class="ts-feedback" id="fb-music">✓ Tema aplicado</span>
+        </div>
+        <div class="lock-wrap">
+          <div class="ts-grid" id="tg-music">
+
+            <div class="ts-card active" data-overlay="music" data-theme="minimal">
+              <div class="ts-mock mock-minimal-music mock-music">
+                <div class="mm-thumb">♪</div>
+                <div class="mm-info"><div class="mm-title">Nome da Música</div><div class="mm-artist">Nome do Artista</div><div class="mm-bar"></div></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Minimal</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="music" data-theme="twitch">
+              <div class="ts-mock mock-twitch-music mock-music">
+                <div class="mm-thumb">♪</div>
+                <div class="mm-info"><div class="mm-title">Nome da Música</div><div class="mm-artist">Nome do Artista</div><div class="mm-bar"></div></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Twitch Style</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="music" data-theme="neon">
+              <div class="ts-mock mock-neon-music mock-music">
+                <div class="mm-thumb">♪</div>
+                <div class="mm-info"><div class="mm-title">Nome da Música</div><div class="mm-artist">Nome do Artista</div><div class="mm-bar"></div></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Neon / Glow</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="music" data-theme="light">
+              <div class="ts-mock mock-light-music mock-music">
+                <div class="mm-thumb">♪</div>
+                <div class="mm-info"><div class="mm-title">Nome da Música</div><div class="mm-artist">Nome do Artista</div><div class="mm-bar"></div></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Clean Light</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="music" data-theme="boxside">
+              <div class="ts-mock mock-boxside-music mock-music">
+                <div class="mm-thumb">♪</div>
+                <div class="mm-info"><div class="mm-title">Nome da Música</div><div class="mm-artist">Nome do Artista</div><div class="mm-bar"></div></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Box Side</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="music" data-theme="retro80">
+              <div class="ts-mock mock-retro80-music mock-music">
+                <div class="mm-thumb">♪</div>
+                <div class="mm-info"><div class="mm-title">Nome da Música</div><div class="mm-artist">Nome do Artista</div><div class="mm-bar"></div></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Radio 80s</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="music" data-theme="retro">
+              <div class="ts-mock mock-retro-music mock-music">
+                <div class="mm-thumb">♪</div>
+                <div class="mm-info"><div class="mm-title">Nome da Música</div><div class="mm-artist">Nome do Artista</div><div class="mm-bar"></div></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Retro CRT</span><span class="ts-check">✓</span></div>
+            </div>
+
+          </div>
+          <div class="premium-lock" id="lock-music">
+            <span class="lock-icon">★</span>
+            <span class="lock-title">Recurso Premium</span>
+            <span class="lock-desc">Temas de overlay estão disponíveis no plano Premium</span>
+            <a class="lock-btn" href="/plans">Ver planos</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="url-section">
+        <div class="url-row">
+          <span class="url-lbl">URL</span>
+          <span class="url-text" id="url-music">http://localhost:3000/overlay/music</span>
+          <button class="btn-copy" onclick="copyUrl('url-music', this)">Copiar</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── VIEWERS ─────────────────────────────────────────────────────── -->
+  <div class="panel" id="panel-viewers">
+    <div class="panel-inner">
+
+      <div class="preview-area" style="padding:0; align-items:stretch; justify-content:stretch; min-height:280px;">
+        <span class="pv-label" style="z-index:1">Preview ao vivo</span>
+        <iframe class="frame-viewers" id="iframe-viewers" src="/overlay/viewers" scrolling="no" allowtransparency="true"></iframe>
+      </div>
+
+      <div class="ov-desc">
+        <p class="ov-desc-text">Contador de espectadores por plataforma com ponto de status animado. Cada plataforma aparece somente quando está ao vivo. Suporta drag &amp; drop de posições.</p>
+        <div class="ov-tags">
+          <span class="ov-tag purple">Polling 15s</span>
+          <span class="ov-tag green">Twitch · YouTube · Kick</span>
+          <span class="ov-tag">Drag &amp; Drop</span>
+        </div>
+      </div>
+
+      <div class="theme-section">
+        <div class="ts-header">
+          <span class="ts-title">Escolha o tema</span>
+          <span class="ts-premium-tag">Premium</span>
+          <span class="ts-feedback" id="fb-viewers">✓ Tema aplicado</span>
+        </div>
+        <div class="lock-wrap">
+          <div class="ts-grid" id="tg-viewers">
+
+            <div class="ts-card active" data-overlay="viewers" data-theme="minimal">
+              <div class="ts-mock mock-minimal-viewers mock-viewers">
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#9147ff">TW</span><span class="mv-count">1.2k</span><span class="mv-label">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#ef4444">YT</span><span class="mv-count">847</span><span class="mv-label">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#53fc18">KK</span><span class="mv-count">312</span><span class="mv-label">viewers</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Minimal</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="viewers" data-theme="twitch">
+              <div class="ts-mock mock-twitch-viewers mock-viewers">
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#9147ff">TW</span><span class="mv-count">1.2k</span><span class="mv-label">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#ef4444">YT</span><span class="mv-count">847</span><span class="mv-label">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#53fc18">KK</span><span class="mv-count">312</span><span class="mv-label">viewers</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Twitch Style</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="viewers" data-theme="neon">
+              <div class="ts-mock mock-neon-viewers mock-viewers">
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#00c8e0">TW</span><span class="mv-count">1.2k</span><span class="mv-label">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#ef4444">YT</span><span class="mv-count">847</span><span class="mv-label">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#53fc18">KK</span><span class="mv-count">312</span><span class="mv-label">viewers</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Neon / Glow</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="viewers" data-theme="light">
+              <div class="ts-mock mock-light-viewers mock-viewers">
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#6441a5">TW</span><span class="mv-count" style="color:#1a1a2e">1.2k</span><span class="mv-label" style="color:#888">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#cc0000">YT</span><span class="mv-count" style="color:#1a1a2e">847</span><span class="mv-label" style="color:#888">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform" style="color:#2a9d2a">KK</span><span class="mv-count" style="color:#1a1a2e">312</span><span class="mv-label" style="color:#888">viewers</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Clean Light</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="viewers" data-theme="boxside">
+              <div class="ts-mock mock-boxside-viewers mock-viewers">
+                <div class="mv-row"><span class="mv-count">1.2k</span><span class="mv-label" style="color:rgba(255,255,255,0.4);font-size:8px">Twitch</span></div>
+                <div class="mv-row"><span class="mv-count">847</span><span class="mv-label" style="color:rgba(255,255,255,0.4);font-size:8px">YouTube</span></div>
+                <div class="mv-row"><span class="mv-count">312</span><span class="mv-label" style="color:rgba(255,255,255,0.4);font-size:8px">Kick</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Box Side</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="viewers" data-theme="retro80">
+              <div class="ts-mock mock-retro80-viewers mock-viewers">
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform">TW</span><span class="mv-count">1.2k</span><span class="mv-label">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform">YT</span><span class="mv-count">847</span><span class="mv-label">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform">KK</span><span class="mv-count">312</span><span class="mv-label">viewers</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Radio 80s</span><span class="ts-check">✓</span></div>
+            </div>
+
+            <div class="ts-card" data-overlay="viewers" data-theme="retro">
+              <div class="ts-mock mock-retro-viewers mock-viewers">
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform">TW</span><span class="mv-count">1.2k</span><span class="mv-label">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform">YT</span><span class="mv-count">847</span><span class="mv-label">viewers</span></div>
+                <div class="mv-row"><div class="mv-dot"></div><span class="mv-platform">KK</span><span class="mv-count">312</span><span class="mv-label">viewers</span></div>
+              </div>
+              <div class="ts-footer"><span class="ts-name">Retro CRT</span><span class="ts-check">✓</span></div>
+            </div>
+
+          </div>
+          <div class="premium-lock" id="lock-viewers">
+            <span class="lock-icon">★</span>
+            <span class="lock-title">Recurso Premium</span>
+            <span class="lock-desc">Temas de overlay estão disponíveis no plano Premium</span>
+            <a class="lock-btn" href="/plans">Ver planos</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="url-section">
+        <div class="url-row">
+          <span class="url-lbl">URL</span>
+          <span class="url-text" id="url-viewers">http://localhost:3000/overlay/viewers</span>
+          <button class="btn-copy" onclick="copyUrl('url-viewers', this)">Copiar</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── CAMERA ───────────────────────────────────────────────────── -->
+  <div class="panel" id="panel-cam">
+    <div class="panel-inner">
+
+      <div class="preview-area">
+        <span class="pv-label">Preview ao vivo</span>
+        <iframe class="frame-cam" id="iframe-cam" src="/overlay/cam?v=preview" scrolling="no" allowtransparency="true" style="width:480px;height:270px;background:transparent;border:none"></iframe>
+        <span class="pv-note">Posicione sobre sua webcam no OBS</span>
+      </div>
+
+      <div class="ov-desc">
+        <p class="ov-desc-text">Frame decorativo para câmera (webcam). Adicione como Browser Source no OBS sobre a fonte de vídeo da câmera.</p>
+        <div class="ov-tags">
+          <span class="ov-tag">Transparente</span>
+          <span class="ov-tag green">OBS Browser Source</span>
+          <span class="ov-tag">Qualquer tamanho</span>
+        </div>
+      </div>
+
+      <div class="theme-section">
+        <div class="ts-header">
+          <span class="ts-title">Estilo do frame</span>
+          <span class="ts-feedback" id="fb-cam">✓ Tema aplicado</span>
+        </div>
+
+        <div class="ts-grid" id="tg-cam">
+
+          <div class="ts-card active" data-overlay="cam" data-theme="minimal">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;border:2px solid rgba(155,155,155,0.45);border-radius:5px">
+              <div style="position:absolute;top:-1px;left:-1px;width:10px;height:10px;border-top:2px solid #9B9B9B;border-left:2px solid #9B9B9B"></div>
+              <div style="position:absolute;top:-1px;right:-1px;width:10px;height:10px;border-top:2px solid #9B9B9B;border-right:2px solid #9B9B9B"></div>
+              <div style="position:absolute;bottom:-1px;left:-1px;width:10px;height:10px;border-bottom:2px solid #9B9B9B;border-left:2px solid #9B9B9B"></div>
+              <div style="position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-bottom:2px solid #9B9B9B;border-right:2px solid #9B9B9B"></div>
+            </div>
+            <div class="ts-footer"><span class="ts-name">Minimal</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="twitch">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;border:2px solid rgba(145,71,255,0.6);border-radius:10px;box-shadow:0 0 8px rgba(145,71,255,0.2)"></div>
+            <div class="ts-footer"><span class="ts-name">Twitch</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="neon">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;border:2px solid rgba(0,200,224,0.7);border-radius:5px;box-shadow:0 0 8px rgba(0,200,224,0.25)"></div>
+            <div class="ts-footer"><span class="ts-name">Neon</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="light">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;border:2px solid rgba(255,255,255,0.65);border-radius:7px;box-shadow:0 0 6px rgba(255,255,255,0.1)"></div>
+            <div class="ts-footer"><span class="ts-name">Light</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="boxside">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;border:none;border-left:4px solid #00c8e0;border-radius:0"></div>
+            <div class="ts-footer"><span class="ts-name">Box Side</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="retro">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;border:2px solid #00ff41;border-radius:0;box-shadow:0 0 8px rgba(0,255,65,0.2)"></div>
+            <div class="ts-footer"><span class="ts-name">Retro CRT</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="retro80">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;border:2px solid #ff1a8c;border-radius:2px;box-shadow:0 0 10px rgba(255,26,140,0.25)"></div>
+            <div class="ts-footer"><span class="ts-name">Radio 80s</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="soft">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;border:3px solid rgba(180,100,255,0.7);border-radius:32px;box-shadow:0 0 12px rgba(180,100,255,0.25)"></div>
+            <div class="ts-footer"><span class="ts-name">Soft</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="round-gold">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;border:3px solid rgba(255,196,0,0.75);border-radius:28px;box-shadow:0 0 12px rgba(255,196,0,0.2)"></div>
+            <div class="ts-footer"><span class="ts-name">Round Gold</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="round-rose">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;border:3px solid rgba(255,100,150,0.7);border-radius:32px;box-shadow:0 0 12px rgba(255,100,150,0.2)"></div>
+            <div class="ts-footer"><span class="ts-name">Round Rose</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="circle">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;display:flex;align-items:center;justify-content:center">
+              <div style="width:54px;height:54px;border-radius:50%;border:3px solid rgba(0,200,224,0.8);box-shadow:0 0 12px rgba(0,200,224,0.35),inset 0 0 8px rgba(0,200,224,0.1)"></div>
+            </div>
+            <div class="ts-footer"><span class="ts-name">Circle</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="hex">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;display:flex;align-items:center;justify-content:center">
+              <div style="width:80px;height:54px;border:2px solid rgba(0,200,224,0.8);clip-path:polygon(12px 0%,calc(100% - 12px) 0%,100% 12px,100% calc(100% - 12px),calc(100% - 12px) 100%,12px 100%,0% calc(100% - 12px),0% 12px);box-shadow:0 0 10px rgba(0,200,224,0.3)"></div>
+            </div>
+            <div class="ts-footer"><span class="ts-name">HUD Hex</span><span class="ts-check">✓</span></div>
+          </div>
+
+          <div class="ts-card" data-overlay="cam" data-theme="retro-tv">
+            <div class="ts-mock" style="background:transparent;position:relative;height:68px;display:flex;align-items:center;justify-content:center">
+              <div style="width:88px;height:56px;border:5px solid #1a1a2e;border-radius:14px;box-shadow:0 0 0 2px #2a2a4a,inset 0 0 0 2px #0d0d1a"></div>
+            </div>
+            <div class="ts-footer"><span class="ts-name">Retro TV</span><span class="ts-check">✓</span></div>
+          </div>
+
+        </div>
+        <div class="premium-lock" id="lock-cam">
+          <span class="lock-icon">★</span>
+          <span class="lock-title">Recurso Premium</span>
+          <span class="lock-desc">Temas de overlay estão disponíveis no plano Premium</span>
+          <a class="lock-btn" href="/plans">Ver planos</a>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="url-section">
+      <div class="url-row">
+        <span class="url-lbl">URL</span>
+        <span class="url-text" id="url-cam">http://localhost:3000/overlay/cam</span>
+        <button class="btn-copy" onclick="copyUrl('url-cam', this)">Copiar</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── COUNTDOWN ──────────────────────────────────────────────────── -->
+  <div class="panel" id="panel-countdown">
+    <div class="panel-inner">
+
+      <div class="preview-area">
+        <span class="pv-label">Preview ao vivo</span>
+        <iframe id="iframe-countdown" src="/overlay/countdown?v=preview" scrolling="no" allowtransparency="true" style="width:480px;height:200px;border:none;border-radius:8px;background:rgba(10,10,20,0.85)"></iframe>
+        <span class="pv-note">Adicione como Browser Source no OBS (ex: 800×200 px)</span>
+      </div>
+
+      <div class="ov-desc">
+        <p class="ov-desc-text">Timer de contagem regressiva para antes da live começar. Quando o contador chega a zero, a cena OBS configurada é trocada automaticamente.</p>
+        <div class="ov-tags">
+          <span class="ov-tag">Countdown</span>
+          <span class="ov-tag">OBS Auto-Switch</span>
+          <span class="ov-tag">WebSocket</span>
+        </div>
+      </div>
+
+      <div class="theme-section">
+      <div class="ts-header">
+        <span class="ts-title">Escolha o tema</span>
+        <span class="ts-premium-tag">Premium</span>
+        <span class="ts-feedback" id="fb-countdown">✓ Tema aplicado</span>
+      </div>
+      <div class="ts-grid" id="tg-countdown">
+
+        <div class="ts-card active" data-overlay="countdown" data-theme="minimal">
+          <div class="ts-mock" style="background:rgba(0,0,0,0.4);height:68px;display:flex;align-items:center;justify-content:center;border-radius:4px;border:1px solid rgba(255,255,255,0.08)">
+            <span style="font-size:28px;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:.02em">05:00</span>
+          </div>
+          <div class="ts-footer"><span class="ts-name">Minimal</span><span class="ts-check">✓</span></div>
+        </div>
+
+        <div class="ts-card" data-overlay="countdown" data-theme="neon">
+          <div class="ts-mock" style="background:rgba(0,10,18,0.55);height:68px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:2px solid rgba(0,200,224,0.45);box-shadow:0 0 12px rgba(0,200,224,0.15)">
+            <span style="font-size:28px;font-weight:900;color:#00c8e0;text-shadow:0 0 12px rgba(0,200,224,0.5);font-variant-numeric:tabular-nums">05:00</span>
+          </div>
+          <div class="ts-footer"><span class="ts-name">Neon</span><span class="ts-check">✓</span></div>
+        </div>
+
+        <div class="ts-card" data-overlay="countdown" data-theme="retro">
+          <div class="ts-mock" style="background:rgba(0,8,2,0.65);height:68px;display:flex;align-items:center;justify-content:center;border-radius:2px;border:2px solid rgba(0,255,65,0.35)">
+            <span style="font-size:36px;font-weight:400;color:#00ff41;font-family:'VT323',monospace;text-shadow:0 0 10px rgba(0,255,65,0.45)">05:00</span>
+          </div>
+          <div class="ts-footer"><span class="ts-name">Retro CRT</span><span class="ts-check">✓</span></div>
+        </div>
+
+        <div class="ts-card" data-overlay="countdown" data-theme="retro80">
+          <div class="ts-mock" style="background:rgba(10,0,18,0.65);height:68px;display:flex;align-items:center;justify-content:center;border-radius:4px;border:2px solid rgba(255,26,140,0.45);box-shadow:0 0 12px rgba(255,26,140,0.18)">
+            <span style="font-size:28px;font-weight:900;color:#ff1a8c;text-shadow:0 0 12px rgba(255,26,140,0.5);font-variant-numeric:tabular-nums">05:00</span>
+          </div>
+          <div class="ts-footer"><span class="ts-name">Radio 80s</span><span class="ts-check">✓</span></div>
+        </div>
+
+        <div class="ts-card" data-overlay="countdown" data-theme="twitch">
+          <div class="ts-mock" style="background:rgba(12,6,24,0.65);height:68px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:2px solid rgba(145,71,255,0.45);box-shadow:0 0 12px rgba(145,71,255,0.18)">
+            <span style="font-size:28px;font-weight:900;color:#9147ff;text-shadow:0 0 12px rgba(145,71,255,0.45);font-variant-numeric:tabular-nums">05:00</span>
+          </div>
+          <div class="ts-footer"><span class="ts-name">Twitch</span><span class="ts-check">✓</span></div>
+        </div>
+
+        <div class="ts-card" data-overlay="countdown" data-theme="fire">
+          <div class="ts-mock" style="background:rgba(18,5,0,0.65);height:68px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:2px solid rgba(255,100,20,0.5);box-shadow:0 0 12px rgba(255,60,0,0.2)">
+            <span style="font-size:28px;font-weight:900;color:#ff6014;text-shadow:0 0 12px rgba(255,96,20,0.5);font-variant-numeric:tabular-nums">05:00</span>
+          </div>
+          <div class="ts-footer"><span class="ts-name">Fire</span><span class="ts-check">✓</span></div>
+        </div>
+
+        <div class="ts-card" data-overlay="countdown" data-theme="ice">
+          <div class="ts-mock" style="background:rgba(4,8,22,0.6);height:68px;display:flex;align-items:center;justify-content:center;border-radius:10px;border:2px solid rgba(100,180,255,0.45);box-shadow:0 0 12px rgba(100,180,255,0.15)">
+            <span style="font-size:28px;font-weight:900;color:#64b4ff;text-shadow:0 0 12px rgba(100,180,255,0.4);font-variant-numeric:tabular-nums">05:00</span>
+          </div>
+          <div class="ts-footer"><span class="ts-name">Ice</span><span class="ts-check">✓</span></div>
+        </div>
+
+        <div class="ts-card" data-overlay="countdown" data-theme="gold">
+          <div class="ts-mock" style="background:rgba(14,9,2,0.65);height:68px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:2px solid rgba(245,158,11,0.5);box-shadow:0 0 12px rgba(245,158,11,0.18)">
+            <span style="font-size:28px;font-weight:900;color:#f59e0b;text-shadow:0 0 12px rgba(245,158,11,0.4);font-variant-numeric:tabular-nums">05:00</span>
+          </div>
+          <div class="ts-footer"><span class="ts-name">Gold</span><span class="ts-check">✓</span></div>
+        </div>
+
+      </div><!-- /ts-grid -->
+      </div><!-- /theme-section -->
+      <div class="premium-lock" id="lock-countdown">
+        <span class="lock-icon">★</span>
+        <span class="lock-title">Recurso Premium</span>
+        <span class="lock-desc">Temas de overlay estão disponíveis no plano Premium</span>
+        <a class="lock-btn" href="/plans">Ver planos</a>
+      </div>
+    </div>
+
+    <div class="url-section">
+      <div class="url-row">
+        <span class="url-lbl">URL</span>
+        <span class="url-text" id="url-countdown">http://localhost:3000/overlay/countdown</span>
+        <button class="btn-copy" onclick="copyUrl('url-countdown', this)">Copiar</button>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+NucleusAuth.guard();
+
+// ── URLs dinâmicas
+(function() {
+  const base = window.location.origin;
+  document.getElementById('url-chat').textContent    = base + '/overlay/chat';
+  document.getElementById('url-music').textContent   = base + '/overlay/music';
+  document.getElementById('url-viewers').textContent = base + '/overlay/viewers';
+  document.getElementById('url-cam').textContent       = base + '/overlay/cam';
+  document.getElementById('url-countdown').textContent = base + '/overlay/countdown';
+})();
+
+// ── Tabs
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+}
+
+// ── Copiar URL
+function copyUrl(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => {
+    btn.textContent = '✓ Copiado';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+// ── Feedback
+function showFeedback(overlay) {
+  const el = document.getElementById('fb-' + overlay);
+  if (!el) return;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Carrega temas ativos
+async function loadThemes() {
+  try {
+    const d = await fetch('/overlay/themes').then(r => r.json());
+    ['chat', 'music', 'viewers', 'cam', 'countdown'].forEach(ov => {
+      const t = d[ov] || 'minimal';
+      document.querySelectorAll(`#tg-${ov} .ts-card`).forEach(c => {
+        c.classList.toggle('active', c.dataset.theme === t);
+      });
+    });
+  } catch {}
+}
+
+// ── Clique no card de tema
+document.querySelectorAll('.ts-card').forEach(card => {
+  card.addEventListener('click', async () => {
+    if (card.classList.contains('ts-locked')) {
+      if (window.parent !== window) {
+        try { window.parent.NucleusToast('Tema exclusivo Premium ★ — faça upgrade para desbloquear', 'info', 3500); } catch(_) {}
+      } else {
+        window.location.href = '/plans';
+      }
+      return;
+    }
+    const overlay = card.dataset.overlay;
+    const theme   = card.dataset.theme;
+
+    document.querySelectorAll(`#tg-${overlay} .ts-card`).forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+
+    await fetch('/overlay/themes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [overlay]: theme }),
+    });
+
+    // Recarrega o iframe para aplicar o tema
+    const iframe = document.getElementById('iframe-' + overlay);
+    if (iframe) {
+      const s = iframe.src;
+      iframe.src = '';
+      setTimeout(() => { iframe.src = s; }, 60);
+    }
+
+    showFeedback(overlay);
+
+    // Sync Supabase
+    const all = await fetch('/overlay/themes').then(r => r.json()).catch(() => ({}));
+    NucleusAuth.saveSettings({ overlay_themes: all });
+  });
+});
+
+// ── Controle de plano
+const OVERLAYS_LIST = ['chat', 'music', 'viewers', 'cam', 'countdown'];
+
+function applyFreeLocks() {
+  OVERLAYS_LIST.forEach(ov => {
+    document.querySelectorAll(`#tg-${ov} .ts-card`).forEach((c, i) => {
+      if (i >= 2) c.classList.add('ts-locked');
+    });
+    document.getElementById('lock-' + ov)?.remove();
+  });
+}
+
+function applyPremiumUnlock() {
+  window._isPremium = true;
+  const badge = document.getElementById('plan-badge');
+  if (badge) { badge.className = 'plan-badge premium'; badge.textContent = 'Premium'; }
+  document.querySelectorAll('.ts-card.ts-locked').forEach(c => c.classList.remove('ts-locked'));
+  OVERLAYS_LIST.forEach(ov => document.getElementById('lock-' + ov)?.remove());
+}
+
+// 1. Aplica locks imediatamente (secure by default)
+applyFreeLocks();
+
+// 2. Confirma plano via servidor — fonte mais confiável
+fetch('/auth/plan').then(r => r.ok ? r.json() : null).then(d => {
+  if (d?.is_premium) {
+    applyPremiumUnlock();
+    // Sincroniza temas do Supabase → servidor local
+    NucleusAuth.profile().then(prof => {
+      if (prof?.overlay_themes && typeof prof.overlay_themes === 'object') {
+        fetch('/overlay/themes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(prof.overlay_themes),
+        }).then(() => loadThemes()).catch(() => {});
+      }
+    }).catch(() => {});
+  }
+  // Se free → locks já estão aplicados, nada a fazer
+}).catch(() => {});
+
+loadThemes();
+</script>
+</body>
+</html>

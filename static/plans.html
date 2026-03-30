@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nucleus · Planos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- Tema -->
+<script src="/static/theme.js"></script>
+<!-- Auth guard -->
+<style id="_ah">body{visibility:hidden!important}</style>
+<script src="/static/supabase.js"></script>
+<script src="/static/nucleus-auth.js"></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:     #060912;
+  --card:   #0e1120;
+  --card2:  #141828;
+  --border: rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.12);
+  --text:   #dde3f0;
+  --muted:  #4b5478;
+  --dim:    #252b42;
+  --cyan:   #00c8e0;
+  --purple: #9147ff;
+  --gold:   #f59e0b;
+  --red:    #ef4444;
+}
+
+body {
+  background: var(--bg);
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 40px 24px 80px;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  bottom: -120px; left: -80px;
+  width: 480px; height: 380px;
+  background: radial-gradient(ellipse, rgba(0,200,224,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed;
+  top: -80px; right: -60px;
+  width: 360px; height: 300px;
+  background: radial-gradient(ellipse, rgba(145,71,255,0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Header */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 860px;
+  margin: 0 auto 48px;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.logo-icon { width: 32px; height: 32px; object-fit: contain; }
+.logo-name {
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--cyan), #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.back-btn {
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s;
+}
+.back-btn:hover { color: var(--text); }
+
+/* Hero */
+.hero {
+  text-align: center;
+  max-width: 500px;
+  margin: 0 auto 48px;
+}
+.hero h1 {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 12px;
+}
+.hero p {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* Plans grid */
+.plans-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.plan-card {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 32px 28px;
+  position: relative;
+  overflow: hidden;
+}
+.plan-card.premium {
+  border-color: rgba(245,158,11,0.35);
+  box-shadow: 0 0 0 1px rgba(245,158,11,0.1), 0 24px 60px rgba(0,0,0,0.5);
+}
+.plan-card.premium::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.7;
+}
+
+/* Current badge */
+.current-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.current-badge.active { background: rgba(0,200,224,0.15); color: var(--cyan); }
+.current-badge.inactive { background: var(--dim); color: var(--muted); }
+
+.plan-name {
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.plan-card.premium .plan-name {
+  background: linear-gradient(135deg, var(--gold), #ef4444);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.plan-price {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.plan-price strong {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* Features list */
+.features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+.features li.locked { color: var(--muted); }
+.feat-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Divider */
+.feat-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
+}
+
+/* CTA */
+.plan-cta {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s;
+}
+.plan-cta.free {
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  cursor: default;
+}
+.plan-cta.upgrade {
+  background: linear-gradient(135deg, var(--gold), #ef4444);
+  color: #fff;
+}
+.plan-cta.upgrade:hover { opacity: 0.9; }
+.plan-cta.coming-soon {
+  background: var(--dim);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* Note */
+.plans-note {
+  text-align: center;
+  font-size: 12px;
+  color: var(--dim);
+  margin-top: 24px;
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── Modo claro ─────────────────────────────────────────────────── */
+html[data-theme="light"] {
+  --bg:     #e8ecf6;
+  --card:   #ffffff;
+  --card2:  #f0f3fb;
+  --border: rgba(15,25,80,0.09);
+  --border2:rgba(15,25,80,0.15);
+  --text:   #0d1229;
+  --muted:  #5e6d96;
+  --dim:    #b8c3df;
+}
+html[data-theme="light"] body { background: var(--bg); color: var(--text); }
+html[data-theme="light"] body::before {
+  background: radial-gradient(ellipse, rgba(0,200,224,0.12) 0%, transparent 70%);
+}
+html[data-theme="light"] body::after {
+  background: radial-gradient(ellipse, rgba(145,71,255,0.09) 0%, transparent 70%);
+}
+</style>
+</head>
+<body>
+<script>NucleusAuth.guard();</script>
+
+<div class="page-header">
+  <a class="logo" href="/">
+    <img class="logo-icon" src="/icones/Logo.png" alt="Nucleus" onerror="this.style.display='none'">
+    <span class="logo-name">Nucleus</span>
+  </a>
+  <a class="back-btn" href="/">← Voltar ao Dashboard</a>
+</div>
+
+<div class="hero">
+  <h1>Escolha seu plano</h1>
+  <p>Comece gratuitamente e faça upgrade quando precisar de mais recursos para sua live.</p>
+</div>
+
+<div class="plans-grid">
+
+  <!-- FREE -->
+  <div class="plan-card free" id="card-free">
+    <div class="current-badge active" id="badge-free">Plano atual</div>
+    <div class="plan-name">Free</div>
+    <div class="plan-price"><strong>R$0</strong> / sempre</div>
+
+    <ul class="features">
+      <li><span class="feat-icon">✓</span> 2 plataformas simultâneas no chat</li>
+      <li><span class="feat-icon">✓</span> Overlay de chat com emotes</li>
+      <li><span class="feat-icon">✓</span> Overlay de música</li>
+      <li><span class="feat-icon">✓</span> Overlay de espectadores</li>
+      <li><span class="feat-icon">✓</span> Histórico de 50 mensagens</li>
+      <li><span class="feat-icon">✓</span> Sincronização de canais entre máquinas</li>
+      <div class="feat-divider"></div>
+      <li class="locked"><span class="feat-icon">✗</span> 3 plataformas simultâneas</li>
+      <li class="locked"><span class="feat-icon">✗</span> Histórico de 100 mensagens</li>
+      <li class="locked"><span class="feat-icon">✗</span> Sem badge "Powered by Nucleus"</li>
+      <li class="locked"><span class="feat-icon">✗</span> Temas visuais nos overlays</li>
+    </ul>
+
+    <button class="plan-cta free" disabled>Plano atual</button>
+  </div>
+
+  <!-- PREMIUM -->
+  <div class="plan-card premium" id="card-premium">
+    <div class="current-badge inactive" id="badge-premium">Em breve</div>
+    <div class="plan-name">Premium</div>
+    <div class="plan-price"><strong>R$19</strong> / mês</div>
+
+    <ul class="features">
+      <li><span class="feat-icon">✓</span> <strong>3 plataformas simultâneas</strong> no chat</li>
+      <li><span class="feat-icon">✓</span> Overlay de chat com emotes</li>
+      <li><span class="feat-icon">✓</span> Overlay de música</li>
+      <li><span class="feat-icon">✓</span> Overlay de espectadores</li>
+      <li><span class="feat-icon">✓</span> <strong>Histórico de 100 mensagens</strong></li>
+      <li><span class="feat-icon">✓</span> Sincronização completa entre máquinas</li>
+      <div class="feat-divider"></div>
+      <li><span class="feat-icon">✓</span> <strong>Sem badge nos overlays</strong></li>
+      <li><span class="feat-icon">✓</span> Temas visuais nos overlays</li>
+      <li><span class="feat-icon">✓</span> Suporte prioritário</li>
+    </ul>
+
+    <button class="plan-cta coming-soon" disabled>Em breve</button>
+    <div id="premium-expiry" style="margin-top:12px;font-size:12px;color:var(--muted);text-align:center;display:none"></div>
+  </div>
+
+</div>
+
+<p class="plans-note">
+  O plano Premium está sendo preparado. Deixe seu e-mail no Discord para ser notificado quando abrir.
+</p>
+
+<script>
+NucleusAuth.profile().then(prof => {
+  if (!prof) return;
+  if (prof.is_premium) {
+    document.getElementById('badge-free').className     = 'current-badge inactive';
+    document.getElementById('badge-free').textContent   = 'Plano anterior';
+    document.getElementById('badge-premium').className  = 'current-badge active';
+    document.getElementById('badge-premium').textContent = 'Plano atual';
+    document.querySelector('.plan-cta.free').textContent = 'Downgrade';
+
+    if (prof.premium_until) {
+      const days = Math.ceil((new Date(prof.premium_until) - new Date()) / 86400000);
+      const el   = document.getElementById('premium-expiry');
+      el.style.display = 'block';
+      if (days > 0) {
+        el.textContent = `⏱ ${days} dia${days !== 1 ? 's' : ''} restante${days !== 1 ? 's' : ''}`;
+        el.style.color = days <= 7 ? '#f59e0b' : 'var(--muted)';
+      } else {
+        el.textContent = 'Assinatura expirada';
+        el.style.color = '#ef4444';
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

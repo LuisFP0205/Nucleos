@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chat — Nucleus</title>
+<script src="/static/supabase.js"></script>
+<script src="/static/nucleus-auth.js"></script>
+<style id="_ah">body{visibility:hidden!important}</style>
+<style>
+.nk-page  { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+.nk-titlebar { height:40px; min-height:40px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; border-bottom:1px solid var(--border); background:var(--wrap); flex-shrink:0; }
+.nk-title { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.nk-row { display:flex; align-items:center; }
+
+/* ── Grid ── */
+.chat-layout { flex:1; display:grid; grid-template-columns:1fr 220px; overflow:hidden; }
+
+/* ── Main area ── */
+.chat-main  { display:flex; flex-direction:column; overflow:hidden; border-right:1px solid var(--border); }
+.chat-toolbar { height:36px; min-height:36px; display:flex; align-items:center; padding:0 12px; gap:8px; border-bottom:1px solid var(--border); background:var(--wrap); flex-shrink:0; }
+.filter-tabs { display:flex; gap:2px; }
+.ftab {
+  height:22px; padding:0 8px; font-size:10.5px; font-weight:600; letter-spacing:.3px;
+  cursor:pointer; border:1px solid transparent; background:transparent; color:var(--dim);
+  transition:color .12s; border-radius:var(--r1);
+}
+.ftab:hover { color:var(--muted); }
+.ftab.on { background:rgba(145,71,255,.12); color:var(--text); border-color:rgba(145,71,255,.2); }
+.chat-search { flex:1; max-width:200px; }
+
+.chat-feed { flex:1; overflow-y:auto; padding:6px 10px; display:flex; flex-direction:column; gap:0; }
+.feed-empty { color:var(--dim); font-size:11px; margin:auto; text-align:center; font-family:var(--mono); }
+
+.msg-row { display:flex; gap:8px; padding:4px 6px; border-radius:var(--r1); cursor:default; transition:background .08s; align-items:flex-start; }
+.msg-row:hover { background:var(--card); }
+.msg-row.hl { background:rgba(145,71,255,.06); border-left:2px solid var(--purple); padding-left:4px; }
+.msg-plat { width:22px; height:22px; display:flex; align-items:center; justify-content:center; margin-top:1px; border-radius:4px; flex-shrink:0; }
+.msg-plat.twitch  { background:rgba(145,71,255,.15); }
+.msg-plat.youtube { background:rgba(255,51,51,.12); }
+.msg-plat.kick    { background:rgba(83,252,24,.08); }
+.msg-plat img     { width:14px; height:14px; object-fit:contain; }
+.msg-body { flex:1; min-width:0; }
+.msg-hd { display:flex; align-items:baseline; gap:7px; }
+.msg-author { font-size:11.5px; font-weight:700; }
+.msg-ts     { font-size:10px; color:var(--dim); font-family:var(--mono); }
+.msg-text   { font-size:12.5px; color:var(--muted); line-height:1.45; word-break:break-word; margin-top:1px; }
+.chat-emote { width:20px; height:20px; vertical-align:middle; margin:0 1px; }
+
+.chat-statusbar { height:26px; min-height:26px; display:flex; align-items:center; padding:0 12px; gap:7px; border-top:1px solid var(--border); font-size:10px; color:var(--dim); font-family:var(--mono); flex-shrink:0; background:var(--wrap); }
+.led { width:5px; height:5px; border-radius:50%; background:var(--dim); flex-shrink:0; transition:background .3s; }
+.led.on { background:var(--green); box-shadow:0 0 6px var(--green); }
+
+/* ── Right panel ── */
+.chat-panel { display:flex; flex-direction:column; overflow:hidden; background:var(--wrap); }
+.cp-section { border-bottom:1px solid var(--border); flex-shrink:0; }
+.cp-hd { height:30px; display:flex; align-items:center; padding:0 12px; font-size:10px; font-weight:700; color:var(--dim); text-transform:uppercase; letter-spacing:.8px; border-bottom:1px solid var(--border); }
+.cp-body { padding:8px 10px; }
+
+/* Stats */
+.stat-line { display:flex; justify-content:space-between; align-items:center; height:22px; font-size:11.5px; }
+.stat-k { color:var(--muted); }
+.stat-v { color:var(--cyan); font-family:var(--mono); font-size:12px; font-weight:700; }
+
+/* Platform dots */
+.plat-status-row { display:flex; align-items:center; gap:7px; height:22px; font-size:11px; color:var(--muted); }
+
+/* Recent chatters */
+.chatters-wrap { overflow-y:auto; flex:1; padding:8px 10px; }
+.chatter-chip { display:inline-flex; align-items:center; gap:4px; margin:1px 2px; font-size:10.5px; color:var(--muted); }
+.chatter-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+
+/* Highlights */
+.hl-row { display:flex; gap:5px; padding:8px 10px; border-top:1px solid var(--border); flex-shrink:0; }
+.hl-tags { padding:0 10px 6px; display:flex; flex-wrap:wrap; gap:3px; }
+.hl-tag { display:inline-flex; align-items:center; gap:4px; padding:1px 6px; font-size:10px; background:rgba(145,71,255,.1); border:1px solid rgba(145,71,255,.2); color:var(--purple); border-radius:var(--r1); }
+.hl-tag button { background:none; border:none; color:var(--muted); cursor:pointer; font-size:10px; padding:0; line-height:1; }
+.hl-tag button:hover { color:var(--red); }
+</style>
+</head>
+<body>
+<script src="/static/nucleus-sidebar.js"></script>
+<div class="nk-page">
+  <div class="nk-titlebar">
+    <span class="nk-title">Chat</span>
+    <div class="nk-row" style="gap:8px">
+      <span style="font-size:11px;color:var(--dim);font-family:var(--mono)" id="sub-lbl">0 msgs · 0 chatters</span>
+      <button class="btn btn-ghost btn-sm" onclick="clearAll()" title="Limpar">✕</button>
+      <button class="btn btn-ghost btn-sm" onclick="scrollEnd()" title="Ir ao fim">↓</button>
+    </div>
+  </div>
+
+  <div class="chat-layout">
+
+    <!-- Feed -->
+    <div class="chat-main">
+      <div class="chat-toolbar">
+        <div class="filter-tabs">
+          <button class="ftab on" onclick="setFilter('all',this)">ALL</button>
+          <button class="ftab"    onclick="setFilter('twitch',this)">TWITCH</button>
+          <button class="ftab"    onclick="setFilter('youtube',this)">YOUTUBE</button>
+          <button class="ftab"    onclick="setFilter('kick',this)">KICK</button>
+        </div>
+        <input class="nk-input chat-search" id="search" placeholder="filtrar mensagens..." oninput="onSearch()">
+      </div>
+      <div class="chat-feed" id="feed">
+        <div class="feed-empty" id="feed-empty">sem mensagens</div>
+      </div>
+      <div class="chat-statusbar">
+        <div class="led" id="ws-led"></div>
+        <span id="ws-lbl">disconnected</span>
+        <span style="margin-left:auto" id="cnt-lbl">0</span>
+      </div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="chat-panel">
+
+      <!-- Stats -->
+      <div class="cp-section">
+        <div class="cp-hd">Estatísticas</div>
+        <div class="cp-body">
+          <div class="stat-line"><span class="stat-k">Total</span><span class="stat-v" id="s-total">0</span></div>
+          <div class="stat-line"><span class="stat-k">Twitch</span><span class="stat-v" id="s-tw">0</span></div>
+          <div class="stat-line"><span class="stat-k">YouTube</span><span class="stat-v" id="s-yt">0</span></div>
+          <div class="stat-line"><span class="stat-k">Kick</span><span class="stat-v" id="s-ki">0</span></div>
+          <div class="stat-line"><span class="stat-k">Chatters</span><span class="stat-v" id="s-users">0</span></div>
+        </div>
+      </div>
+
+      <!-- Platforms -->
+      <div class="cp-section">
+        <div class="cp-hd">Plataformas</div>
+        <div class="cp-body">
+          <div class="plat-status-row"><div class="dot" id="pd-tw"></div>Twitch<span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--dim)" id="pc-tw">0</span></div>
+          <div class="plat-status-row"><div class="dot" id="pd-yt"></div>YouTube<span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--dim)" id="pc-yt">0</span></div>
+          <div class="plat-status-row"><div class="dot" id="pd-ki"></div>Kick<span style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--dim)" id="pc-ki">0</span></div>
+        </div>
+      </div>
+
+      <!-- Highlights -->
+      <div class="cp-section">
+        <div class="cp-hd">Palavras-chave</div>
+        <div class="hl-tags" id="hl-tags"></div>
+        <div class="hl-row">
+          <input class="nk-input" id="hl-in" placeholder="ex: !clip" onkeydown="if(event.key==='Enter')addHL()" style="font-size:11px;height:26px">
+          <button class="btn btn-primary btn-sm" onclick="addHL()">+</button>
+        </div>
+      </div>
+
+      <!-- Recent chatters -->
+      <div class="cp-hd" style="border-top:1px solid var(--border)">Chatters recentes</div>
+      <div class="chatters-wrap" id="chatters"></div>
+
+    </div><!-- /chat-panel -->
+
+  </div><!-- /chat-layout -->
+</div><!-- /nk-page -->
+
+<script>
+NucleusAuth.guard();
+(function(){
+  const MAX=500;
+  let _msgs=[],_filter="all",_search="",_hls=[];
+  const _cnts={twitch:0,youtube:0,kick:0};
+  const _users=new Map();
+
+  function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+  function ts(){return new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"});}
+  const PLATIC={twitch:'<img src="/icones/twitch.png" alt="TW">',youtube:'<img src="/icones/youtube.png" alt="YT">',kick:'<img src="/icones/kick.png" alt="KI">'};
+  const PLATCOL={twitch:"#9147ff",youtube:"#ff5555",kick:"#53fc18"};
+
+  window.setFilter=(f,btn)=>{_filter=f;document.querySelectorAll(".ftab").forEach(b=>b.classList.remove("on"));btn.classList.add("on");rebuild();};
+  window.onSearch=()=>{_search=document.getElementById("search").value.toLowerCase();rebuild();};
+
+  function visible(m){
+    if(_filter!=="all"&&m.platform!==_filter)return false;
+    if(_search){const t=(m.message||m.text||"").toLowerCase()+(m.author||m.username||"").toLowerCase();if(!t.includes(_search))return false;}
+    return true;
+  }
+  function isHL(m){return _hls.length&&_hls.some(h=>(m.message||m.text||"").toLowerCase().includes(h.toLowerCase()));}
+
+  function mkEl(m){
+    const d=document.createElement("div");
+    d.className="msg-row"+(isHL(m)?" hl":"");
+    const body=m.message_html||esc(String(m.message||m.text||""));
+    d.innerHTML=`<span class="msg-plat ${m.platform||""}">${PLATIC[m.platform]||""}</span><div class="msg-body"><div class="msg-hd"><span class="msg-author" style="color:${m.color||"#a080e0"}">${esc(m.user||m.author||m.username||"?")}</span><span class="msg-ts">${ts()}</span></div><div class="msg-text">${body}</div></div>`;
+    return d;
+  }
+
+  function rebuild(){
+    const f=document.getElementById("feed"),e=document.getElementById("feed-empty");
+    while(f.children.length>1)f.removeChild(f.lastChild);
+    const v=_msgs.filter(visible);
+    if(!v.length){e.style.display="";return;}
+    e.style.display="none";
+    for(const m of v)f.appendChild(mkEl(m));
+    f.scrollTop=f.scrollHeight;
+  }
+
+  function push(m){
+    _msgs.push(m);if(_msgs.length>MAX)_msgs.shift();
+    const p=m.platform;if(p in _cnts)_cnts[p]++;
+    const au=m.user||m.author||m.username||"?";_users.set(au,p);
+    updateStats();updateChatter(au,p);
+    if(!visible(m))return;
+    const f=document.getElementById("feed"),atBot=f.scrollHeight-f.scrollTop-f.clientHeight<60;
+    document.getElementById("feed-empty").style.display="none";
+    f.appendChild(mkEl(m));
+    while(f.children.length>MAX+1)f.removeChild(f.children[1]);
+    if(atBot)f.scrollTop=f.scrollHeight;
+  }
+
+  function updateStats(){
+    const total=_cnts.twitch+_cnts.youtube+_cnts.kick;
+    document.getElementById("s-total").textContent=total;
+    document.getElementById("s-tw").textContent=_cnts.twitch;
+    document.getElementById("s-yt").textContent=_cnts.youtube;
+    document.getElementById("s-ki").textContent=_cnts.kick;
+    document.getElementById("s-users").textContent=_users.size;
+    document.getElementById("cnt-lbl").textContent=total;
+    document.getElementById("sub-lbl").textContent=`${total} msgs · ${_users.size} chatters`;
+    document.getElementById("pc-tw").textContent=_cnts.twitch;
+    document.getElementById("pc-yt").textContent=_cnts.youtube;
+    document.getElementById("pc-ki").textContent=_cnts.kick;
+  }
+
+  function updateChatter(name,plat){
+    const c=document.getElementById("chatters");
+    if(c.querySelector(`[data-u="${CSS.escape(name)}"]`))return;
+    const el=document.createElement("div");el.className="chatter-chip";el.dataset.u=name;
+    el.innerHTML=`<span class="chatter-dot" style="background:${PLATCOL[plat]||"#888"}"></span>${esc(name)}`;
+    c.prepend(el);
+    const all=c.querySelectorAll(".chatter-chip");if(all.length>25)all[all.length-1].remove();
+  }
+
+  function renderHL(){
+    const c=document.getElementById("hl-tags");
+    c.innerHTML=_hls.map(h=>`<span class="hl-tag">${esc(h)}<button onclick="removeHL('${esc(h)}')" title="Remover">✕</button></span>`).join("");
+  }
+  window.addHL=()=>{const i=document.getElementById("hl-in"),v=i.value.trim();if(!v||_hls.includes(v))return;_hls.push(v);i.value="";renderHL();rebuild();};
+  window.removeHL=h=>{_hls=_hls.filter(x=>x!==h);renderHL();rebuild();};
+
+  window.clearAll=()=>{_msgs=[];_cnts.twitch=0;_cnts.youtube=0;_cnts.kick=0;_users.clear();document.getElementById("chatters").innerHTML="";updateStats();rebuild();};
+  window.scrollEnd=()=>{const f=document.getElementById("feed");f.scrollTop=f.scrollHeight;};
+
+  async function pollStreamStatus(){
+    try{const r=await fetch("/stream/status");if(!r.ok)return;const s=await r.json();
+      document.getElementById("pd-tw").classList.toggle("live",!!s.twitch_live);
+      document.getElementById("pd-yt").classList.toggle("live",!!s.youtube_live);
+      document.getElementById("pd-ki").classList.toggle("live",!!s.kick_live);
+    }catch(_){}
+  }
+
+  (async function init(){
+    try{const r=await fetch("/chat/history");if(r.ok){_msgs=(await r.json()).slice(-MAX);rebuild();updateStats();}}catch(_){}
+    function wsChat(){
+      const ws=new WebSocket(`${location.protocol==="https:"?"wss":"ws"}://${location.host}/ws/chat`);
+      const led=document.getElementById("ws-led"),lbl=document.getElementById("ws-lbl");
+      ws.onopen=()=>{led.classList.add("on");lbl.textContent="connected";};
+      ws.onmessage=e=>{try{push(JSON.parse(e.data));}catch(_){}};
+      ws.onclose=()=>{led.classList.remove("on");lbl.textContent="reconnecting...";setTimeout(wsChat,5000);};
+    }
+    wsChat();
+    pollStreamStatus();setInterval(pollStreamStatus,30000);
+  })();
+})();
+</script>
+</body>
+</html>

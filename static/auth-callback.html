@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Nucleus · Autenticando...</title>
+<script src="/static/supabase.js"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #060912;
+    color: #dde3f0;
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .box {
+    text-align: center;
+    padding: 40px;
+    background: #0e1120;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    max-width: 320px;
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(0,200,224,0.15);
+    border-top-color: #00c8e0;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 20px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  p { font-size: 14px; color: #4b5478; }
+  .err  { color: #ef4444; font-size: 13px; margin-top: 16px; }
+  .ok   { color: #22c55e; font-size: 22px; margin-bottom: 12px; }
+  .hint { font-size: 12px; color: #4b5478; margin-top: 12px; line-height: 1.6; }
+  .btn  {
+    margin-top: 20px; padding: 9px 20px; background: #00c8e0;
+    color: #060912; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="box" id="box">
+  <div class="spinner" id="spinner"></div>
+  <p id="msg">Finalizando autenticação...</p>
+  <p class="err" id="err"></p>
+</div>
+<script>
+(async () => {
+  // Detecta se veio de confirmação de email (type=signup ou type=email)
+  const params = new URLSearchParams(location.search);
+  const hashParams = new URLSearchParams(location.hash.replace('#',''));
+  const type = params.get('type') || hashParams.get('type') || '';
+  const isEmailConfirm = type === 'signup' || type === 'email_change' || type === 'email';
+
+  try {
+    const res = await fetch('/auth/supabase/config');
+    const cfg = await res.json();
+    if (!cfg.enabled) { location.replace('/'); return; }
+
+    const sb = supabase.createClient(cfg.url, cfg.anon_key);
+    const { data, error } = await sb.auth.exchangeCodeForSession(location.search);
+
+    if (error) {
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('err').textContent = error.message;
+      document.getElementById('msg').textContent = 'Erro na autenticação.';
+      setTimeout(() => location.replace('/login'), 3000);
+      return;
+    }
+
+    // Se é confirmação de email OU veio no browser (não no app)
+    const inApp = window.navigator.userAgent.includes('pywebview') ||
+                  location.hostname === '127.0.0.1' && window.opener === null;
+    const openedFromEmail = !window.opener && isEmailConfirm;
+
+    if (openedFromEmail || (data?.session && !window.opener)) {
+      // Mostra mensagem para voltar ao app
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('box').innerHTML = `
+        <div class="ok">✓</div>
+        <p style="font-size:15px;font-weight:600;color:#dde3f0;margin-bottom:6px">Conta confirmada!</p>
+        <p class="hint">Volte ao aplicativo <strong>Nucleus</strong> e faça login com seu e-mail e senha.</p>
+        <button class="btn" onclick="window.close()">Fechar esta aba</button>
+      `;
+      return;
+    }
+
+    if (data?.session) {
+      localStorage.setItem('nucleus_login_ts', Date.now().toString());
+    }
+
+    location.replace('/');
+  } catch (e) {
+    document.getElementById('err').textContent = String(e);
+    setTimeout(() => location.replace('/login'), 3000);
+  }
+})();
+</script>
+</body>
+</html>

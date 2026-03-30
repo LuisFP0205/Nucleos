@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Editor de Overlay · Nucleus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="/static/theme.js"></script>
+<script src="/static/supabase.js"></script>
+<script src="/static/nucleus-auth.js"></script>
+<style>
+/* Always dark — code editor */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; background: #0c0c12; color: #c9d1d9; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+
+/* ── Header ──────────────────────────────────────────────────── */
+.ed-header {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 10px;
+  background: #0c0c12;
+  border-bottom: 1px solid #1e2030;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.ed-back {
+  color: #8b949e; text-decoration: none; font-size: 12px;
+  padding: 5px 10px; border: 1px solid #2d3340; border-radius: 6px;
+  white-space: nowrap; transition: color .15s, background .15s;
+}
+.ed-back:hover { color: #c9d1d9; background: rgba(255,255,255,.07); }
+.ed-name {
+  flex: 1; max-width: 260px;
+  background: #161b22; border: 1px solid #2d3340; border-radius: 6px;
+  color: #c9d1d9; font-size: 13px; font-weight: 600;
+  padding: 5px 10px; outline: none; transition: border-color .15s;
+}
+.ed-name:focus { border-color: #58a6ff; }
+.ed-header-right { margin-left: auto; display: flex; align-items: center; gap: 7px; }
+.ed-status { font-size: 11px; color: #8b949e; white-space: nowrap; min-width: 80px; text-align: right; }
+.ed-btn-save {
+  background: #1a7f37; border: 1px solid rgba(240,246,252,.1); color: #f0f6fc;
+  border-radius: 6px; padding: 5px 14px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; transition: background .15s; white-space: nowrap;
+}
+.ed-btn-save:hover { background: #2ea043; }
+.ed-btn-save:disabled { opacity: .5; cursor: default; }
+.ed-btn-icon {
+  background: rgba(255,255,255,.06); border: 1px solid #2d3340; color: #8b949e;
+  border-radius: 6px; width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; cursor: pointer; text-decoration: none;
+  transition: color .15s, background .15s; flex-shrink: 0;
+}
+.ed-btn-icon:hover { color: #c9d1d9; background: rgba(255,255,255,.12); }
+
+/* ── Body ─────────────────────────────────────────────────────── */
+.ed-body { display: flex; height: calc(100vh - 48px); position: relative; }
+
+/* ── Left pane ───────────────────────────────────────────────── */
+.ed-left {
+  width: 50%; min-width: 220px;
+  display: flex; flex-direction: column;
+  border-right: 1px solid #1e2030;
+  position: relative;
+}
+.ed-tabs {
+  height: 36px; display: flex; align-items: center;
+  background: #131318; border-bottom: 1px solid #1e2030;
+  padding: 0 8px; gap: 2px; flex-shrink: 0;
+}
+.ed-tab {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: #6e7681; font-size: 12px; font-weight: 600; font-family: inherit;
+  padding: 0 12px; height: 100%; cursor: pointer; letter-spacing: .02em;
+  transition: color .15s;
+}
+.ed-tab:hover { color: #c9d1d9; }
+.ed-tab.active { color: #58a6ff; border-bottom-color: #58a6ff; }
+.ed-ref-btn {
+  margin-left: auto; background: none;
+  border: 1px solid #2d3340; border-radius: 5px; color: #6e7681;
+  font-size: 11px; font-family: inherit; padding: 3px 8px; cursor: pointer;
+  white-space: nowrap; transition: color .15s, background .15s;
+}
+.ed-ref-btn:hover { color: #c9d1d9; background: rgba(255,255,255,.07); }
+.ed-ref-btn.open { color: #58a6ff; border-color: rgba(88,166,255,.35); background: rgba(88,166,255,.08); }
+
+.ed-code-wrap { flex: 1; position: relative; overflow: hidden; }
+.ed-textarea {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  background: #0d1117; color: #c9d1d9;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 13px; line-height: 1.65; padding: 16px;
+  border: none; outline: none; resize: none; tab-size: 2;
+}
+.ed-textarea::selection { background: rgba(88,166,255,.22); }
+.ed-textarea::-webkit-scrollbar { width: 6px; }
+.ed-textarea::-webkit-scrollbar-track { background: transparent; }
+.ed-textarea::-webkit-scrollbar-thumb { background: #2d3340; border-radius: 3px; }
+
+/* ── Right pane ──────────────────────────────────────────────── */
+.ed-right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ed-preview-bar {
+  height: 36px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px; background: #131318;
+  border-bottom: 1px solid #1e2030; flex-shrink: 0;
+}
+.ed-prev-label { font-size: 10px; font-weight: 700; color: #6e7681; letter-spacing: .08em; text-transform: uppercase; }
+.ed-prev-note { font-size: 10px; color: #484f58; }
+.ed-preview-area {
+  flex: 1;
+  background: repeating-conic-gradient(rgba(255,255,255,.025) 0% 25%, transparent 0% 50%) 0 0 / 16px 16px;
+  position: relative; overflow: hidden;
+}
+#ed-preview { width: 100%; height: 100%; border: none; background: transparent; }
+
+/* ── Reference drawer ────────────────────────────────────────── */
+.ed-ref-panel {
+  position: absolute; bottom: 0; left: 0; right: 50%;
+  background: #131318; border-top: 1px solid #2d3340;
+  max-height: 210px; overflow-y: auto; z-index: 20;
+  padding: 12px 14px; display: none;
+}
+.ed-ref-panel.open { display: block; }
+.ed-ref-heading {
+  font-size: 10px; font-weight: 700; color: #6e7681;
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px;
+}
+.ed-ref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 5px; }
+.ed-ref-card {
+  background: #0d1117; border: 1px solid #1e2030; border-radius: 6px;
+  padding: 7px 10px; cursor: pointer; transition: border-color .15s;
+}
+.ed-ref-card:hover { border-color: #58a6ff; }
+.ed-ref-attr { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #79c0ff; }
+.ed-ref-desc { font-size: 11px; color: #6e7681; margin-top: 2px; line-height: 1.4; }
+
+/* ── Premium gate ────────────────────────────────────────────── */
+#ed-gate {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(8,9,14,.94); backdrop-filter: blur(14px);
+  display: flex; align-items: center; justify-content: center;
+}
+.ed-gate-box {
+  background: #161b22; border: 1px solid rgba(245,158,11,.25);
+  border-radius: 16px; padding: 44px 52px; text-align: center; max-width: 420px;
+}
+.ed-gate-star { font-size: 44px; margin-bottom: 16px; }
+.ed-gate-title { font-size: 22px; font-weight: 800; color: #f0f6fc; margin-bottom: 8px; }
+.ed-gate-desc { font-size: 14px; color: #8b949e; line-height: 1.65; margin-bottom: 28px; }
+.ed-gate-cta {
+  display: inline-block; background: linear-gradient(135deg,#f59e0b,#ef4444);
+  color: #fff; font-weight: 700; font-size: 14px;
+  border: none; border-radius: 8px; padding: 12px 32px;
+  text-decoration: none; cursor: pointer; transition: opacity .15s;
+}
+.ed-gate-cta:hover { opacity: .88; }
+.ed-gate-back {
+  display: block; margin-top: 14px; font-size: 12px; color: #6e7681;
+  text-decoration: none; transition: color .15s;
+}
+.ed-gate-back:hover { color: #c9d1d9; }
+
+/* ── Resize handle ───────────────────────────────────────────── */
+.ed-resize {
+  position: absolute; top: 0; bottom: 0; left: 50%;
+  width: 5px; cursor: col-resize; z-index: 5;
+  transform: translateX(-50%);
+}
+.ed-resize:hover { background: rgba(88,166,255,.25); }
+</style>
+</head>
+<body>
+
+<!-- Premium gate (hidden by default, shown if not premium) -->
+<div id="ed-gate" style="display:none">
+  <div class="ed-gate-box">
+    <div class="ed-gate-star">★</div>
+    <div class="ed-gate-title">Recurso Premium</div>
+    <div class="ed-gate-desc">
+      A criação e edição de overlays personalizados é exclusiva para usuários Premium.
+      Faça upgrade e crie overlays com HTML e CSS livremente.
+    </div>
+    <a class="ed-gate-cta" href="/plans">Ver planos Premium</a>
+    <a class="ed-gate-back" href="/previews">← Voltar aos overlays</a>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="ed-header">
+  <a class="ed-back" href="/previews">← Overlays</a>
+  <input class="ed-name" id="ed-name" type="text" placeholder="Nome do overlay..." maxlength="60">
+  <div class="ed-header-right">
+    <span class="ed-status" id="ed-status"></span>
+    <button class="ed-btn-save" id="ed-btn-save" onclick="edSave()">💾 Salvar</button>
+    <button class="ed-btn-icon" id="ed-btn-copy" onclick="edCopyUrl()" title="Copiar URL do overlay">⎘</button>
+    <a class="ed-btn-icon" id="ed-btn-open" href="#" target="_blank" title="Abrir overlay em nova aba">⛶</a>
+  </div>
+</div>
+
+<!-- Body -->
+<div class="ed-body">
+
+  <!-- Resize handle -->
+  <div class="ed-resize" id="ed-resize"></div>
+
+  <!-- Left: code editor -->
+  <div class="ed-left" id="ed-left">
+    <div class="ed-tabs">
+      <button class="ed-tab active" id="tab-html" onclick="edTab('html')">HTML</button>
+      <button class="ed-tab"        id="tab-css"  onclick="edTab('css')">CSS</button>
+      <button class="ed-ref-btn" id="ed-ref-btn" onclick="edToggleRef()">📖 Referência</button>
+    </div>
+    <div class="ed-code-wrap">
+      <textarea class="ed-textarea" id="ta-html" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" oninput="edChange()"></textarea>
+      <textarea class="ed-textarea" id="ta-css"  spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" oninput="edChange()" style="display:none"></textarea>
+    </div>
+
+    <!-- Reference panel (drawer, inside left pane) -->
+    <div class="ed-ref-panel" id="ed-ref-panel">
+      <div class="ed-ref-heading">Atributos data-nucleus disponíveis — clique para inserir</div>
+      <div class="ed-ref-grid" id="ed-ref-grid"></div>
+    </div>
+  </div>
+
+  <!-- Right: preview -->
+  <div class="ed-right" id="ed-right">
+    <div class="ed-preview-bar">
+      <span class="ed-prev-label">Preview ao vivo</span>
+      <span class="ed-prev-note">atualiza automaticamente ao editar</span>
+    </div>
+    <div class="ed-preview-area">
+      <iframe id="ed-preview" allowtransparency="true" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+    </div>
+  </div>
+
+</div>
+
+<script>
+NucleusAuth.guard();
+
+/* ── Constants ───────────────────────────────────────────────── */
+const REFS = [
+  { attr: 'data-nucleus="chat"',            desc: 'Contêiner do chat — msgs adicionadas automaticamente. Aceita data-max-messages e data-timeout (ms).' },
+  { attr: 'data-nucleus="music-wrap"',      desc: 'Oculto quando nenhuma música está tocando.' },
+  { attr: 'data-nucleus="music-title"',     desc: 'Título da música atual.' },
+  { attr: 'data-nucleus="music-artist"',    desc: 'Artista da música atual.' },
+  { attr: 'data-nucleus="music-thumb"',     desc: '<img> — src preenchido com a capa do álbum (base64).' },
+  { attr: 'data-nucleus="viewers-twitch"',  desc: 'Número de viewers da Twitch.' },
+  { attr: 'data-nucleus="viewers-youtube"', desc: 'Número de viewers do YouTube.' },
+  { attr: 'data-nucleus="viewers-kick"',    desc: 'Número de viewers do Kick.' },
+  { attr: 'data-nucleus="viewers-total"',   desc: 'Total de viewers somando todas as plataformas.' },
+  { attr: 'data-nucleus="stream-live"',     desc: 'Visível apenas quando ao vivo em alguma plataforma.' },
+  { attr: 'data-nucleus="stream-offline"',  desc: 'Visível apenas quando offline.' },
+];
+
+const CSS_CLASSES = [
+  { attr: '.nucleus-msg',  desc: 'Cada linha de chat injetada pelo sistema.' },
+  { attr: '.nucleus-user', desc: 'Span com o nome do usuário (cor via style).' },
+  { attr: '.nucleus-text', desc: 'Span com o texto da mensagem.' },
+];
+
+/* ── State ───────────────────────────────────────────────────── */
+const _p      = new URLSearchParams(location.search);
+let _ovId     = _p.get('id');
+let _tab      = 'html';
+let _dirty    = false;
+let _pTimer   = null;
+
+/* ── Tab switching ───────────────────────────────────────────── */
+function edTab(t) {
+  _tab = t;
+  ['html','css'].forEach(k => {
+    document.getElementById('tab-' + k).classList.toggle('active', k === t);
+    document.getElementById('ta-' + k).style.display = k === t ? '' : 'none';
+  });
+}
+
+/* ── On change ───────────────────────────────────────────────── */
+function edChange() {
+  _dirty = true;
+  setStatus('');
+  clearTimeout(_pTimer);
+  _pTimer = setTimeout(refreshPreview, 700);
+}
+
+/* ── Preview ─────────────────────────────────────────────────── */
+function refreshPreview() {
+  const base = window.location.origin;
+  const html = document.getElementById('ta-html').value;
+  const css  = document.getElementById('ta-css').value;
+  const doc  = [
+    '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">',
+    '<style>',
+    '*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}',
+    'body{background:transparent;width:100vw;height:100vh;overflow:hidden;position:relative}',
+    css,
+    '</style></head><body>',
+    html,
+    `<script>window.__NUCLEUS_BASE__="${base}";<\/script>`,
+    `<script src="${base}/static/nucleus-runtime.js"><\/script>`,
+    '</body></html>',
+  ].join('\n');
+  document.getElementById('ed-preview').srcdoc = doc;
+}
+
+/* ── Save ────────────────────────────────────────────────────── */
+async function edSave() {
+  const name = document.getElementById('ed-name').value.trim() || 'Meu Overlay';
+  const html = document.getElementById('ta-html').value;
+  const css  = document.getElementById('ta-css').value;
+  const btn  = document.getElementById('ed-btn-save');
+  btn.disabled = true;
+  setStatus('Salvando…');
+  try {
+    let r;
+    if (_ovId) {
+      r = await fetch(`/overlay/custom-update/${_ovId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, html, css }),
+      }).then(x => x.json());
+    } else {
+      r = await fetch('/overlay/custom-new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, html, css }),
+      }).then(x => x.json());
+      if (r.id) {
+        _ovId = r.id;
+        history.replaceState({}, '', `/overlay-editor?id=${r.id}`);
+        _updateUrlBtns();
+      }
+    }
+    _dirty = false;
+    setStatus('✓ Salvo');
+    setTimeout(() => setStatus(''), 3000);
+  } catch {
+    setStatus('Erro ao salvar');
+  }
+  btn.disabled = false;
+}
+
+/* ── Copy URL ────────────────────────────────────────────────── */
+function edCopyUrl() {
+  if (!_ovId) { setStatus('Salve primeiro'); return; }
+  const url = `${location.origin}/overlay/custom/${_ovId}`;
+  navigator.clipboard.writeText(url).then(() => {
+    setStatus('✓ URL copiada');
+    setTimeout(() => setStatus(''), 2000);
+  });
+}
+
+/* ── URL buttons ─────────────────────────────────────────────── */
+function _updateUrlBtns() {
+  if (!_ovId) return;
+  document.getElementById('ed-btn-open').href = `/overlay/custom/${_ovId}`;
+}
+
+function setStatus(msg) {
+  document.getElementById('ed-status').textContent = msg;
+}
+
+/* ── Reference panel ─────────────────────────────────────────── */
+function edToggleRef() {
+  const panel = document.getElementById('ed-ref-panel');
+  const btn   = document.getElementById('ed-ref-btn');
+  const open  = panel.classList.toggle('open');
+  btn.classList.toggle('open', open);
+}
+
+function _buildRef() {
+  const grid = document.getElementById('ed-ref-grid');
+  const all  = [
+    { heading: 'Atributos data-nucleus', items: REFS },
+    { heading: 'Classes CSS injetadas',  items: CSS_CLASSES },
+  ];
+  all.forEach(section => {
+    const h = document.createElement('div');
+    h.style.cssText = 'grid-column:1/-1;font-size:10px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.06em;margin-top:6px';
+    h.textContent = section.heading;
+    grid.appendChild(h);
+    section.items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'ed-ref-card';
+      card.innerHTML = `<div class="ed-ref-attr">${item.attr}</div><div class="ed-ref-desc">${item.desc}</div>`;
+      card.onclick = () => {
+        const ta = document.getElementById(_tab === 'html' ? 'ta-html' : 'ta-css');
+        const s = ta.selectionStart;
+        const ins = _tab === 'html'
+          ? ` ${item.attr}`
+          : `/* ${item.attr} */\n`;
+        ta.value = ta.value.slice(0, s) + ins + ta.value.slice(ta.selectionEnd);
+        ta.selectionStart = ta.selectionEnd = s + ins.length;
+        ta.focus();
+        edChange();
+      };
+      grid.appendChild(card);
+    });
+  });
+}
+
+/* ── Tab key in textareas ────────────────────────────────────── */
+['ta-html','ta-css'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+    const ta = e.target, s = ta.selectionStart, end = ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(end);
+    ta.selectionStart = ta.selectionEnd = s + 2;
+  });
+});
+
+/* ── Resize handle ───────────────────────────────────────────── */
+(function initResize() {
+  const handle = document.getElementById('ed-resize');
+  const left   = document.getElementById('ed-left');
+  let dragging = false, startX = 0, startW = 0;
+  handle.addEventListener('mousedown', e => {
+    dragging = true; startX = e.clientX; startW = left.offsetWidth;
+    document.body.style.cursor = 'col-resize'; e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const w = Math.max(200, Math.min(window.innerWidth - 200, startW + e.clientX - startX));
+    left.style.width = w + 'px';
+    document.getElementById('ed-ref-panel').style.right = (window.innerWidth - w) + 'px';
+    document.getElementById('ed-resize').style.left = w + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    dragging = false; document.body.style.cursor = '';
+  });
+})();
+
+/* ── Init ────────────────────────────────────────────────────── */
+(async function init() {
+  // Premium check
+  try {
+    const plan = await fetch('/auth/plan').then(r => r.json()).catch(() => ({}));
+    if (!plan.is_premium) {
+      document.getElementById('ed-gate').style.display = 'flex';
+      return;
+    }
+  } catch { /* continue — assume premium if check fails */ }
+
+  _buildRef();
+
+  if (_ovId) {
+    try {
+      const list = await fetch('/overlay/custom-list').then(r => r.json());
+      const ov   = list.find(o => o.id === _ovId);
+      if (ov) {
+        document.getElementById('ed-name').value  = ov.name;
+        document.getElementById('ta-html').value  = ov.html;
+        document.getElementById('ta-css').value   = ov.css;
+        _updateUrlBtns();
+      }
+    } catch {}
+  } else {
+    // New overlay — load defaults from server
+    try {
+      const r = await fetch('/overlay/custom-new', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Novo Overlay' }),
+      }).then(x => x.json());
+      _ovId = r.id;
+      history.replaceState({}, '', `/overlay-editor?id=${r.id}`);
+      document.getElementById('ed-name').value = r.name;
+      document.getElementById('ta-html').value = r.html;
+      document.getElementById('ta-css').value  = r.css;
+      _updateUrlBtns();
+    } catch {
+      document.getElementById('ta-html').value = '<div class="ov-root">\n  <!-- seu overlay aqui -->\n</div>';
+      document.getElementById('ta-css').value  = '.ov-root {\n  position: absolute;\n  inset: 0;\n  color: white;\n  font-family: sans-serif;\n}';
+    }
+  }
+
+  refreshPreview();
+
+  // Warn on unsaved changes
+  window.addEventListener('beforeunload', e => {
+    if (_dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+})();
+</script>
+</body>
+</html>

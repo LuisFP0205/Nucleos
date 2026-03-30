@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nucleus</title>
+<script src="/static/supabase.js"></script>
+<script src="/static/nucleus-auth.js"></script>
+<style id="_ah">body{visibility:hidden!important}</style>
+<style>
+/* ── Layout ── */
+.nk-page { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+.nk-titlebar {
+  height:44px; min-height:44px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; border-bottom:1px solid var(--border); background:var(--wrap); flex-shrink:0;
+}
+.nk-title { font-size:11px; font-weight:700; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.nk-row { display:flex; align-items:center; }
+.mono { font-family:var(--mono); }
+
+/* ── Main grid ── */
+.dash-body {
+  flex:1; overflow:hidden;
+  display:grid;
+  grid-template-columns: 1fr 220px;
+  grid-template-rows: 1fr 1fr 1fr 90px;
+  gap:1px;
+  background:var(--border);
+}
+
+/* ── Base cell ── */
+.cell { background:var(--bg); overflow:hidden; display:flex; flex-direction:column; }
+
+/* ═══════════════════════════════════════════
+   Platform cards
+═══════════════════════════════════════════ */
+.plat-cell {
+  padding:12px 14px;
+  position:relative;
+  justify-content:space-between;
+  transition:background .3s;
+}
+
+/* top accent bar */
+.plat-cell::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:var(--plat-col, transparent);
+  opacity:0; transition:opacity .4s;
+}
+.plat-cell.live::before { opacity:1; }
+
+/* subtle live glow on bg */
+.plat-cell.live {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--plat-col) 5%, var(--bg)) 0%, var(--bg) 60%);
+}
+
+.plat-cell[data-p="twitch"]  { --plat-col: #9147ff; }
+.plat-cell[data-p="youtube"] { --plat-col: #ff3333; }
+.plat-cell[data-p="kick"]    { --plat-col: #53fc18; }
+
+/* header row */
+.plat-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.plat-name {
+  display:flex; align-items:center; gap:6px;
+  font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted);
+}
+.plat-name img { opacity:.6; transition:opacity .3s; }
+.plat-cell.live .plat-name img { opacity:1; }
+
+/* live badge */
+.plat-badge {
+  font-size:9.5px; font-weight:800; letter-spacing:.6px;
+  padding:2px 8px; border-radius:20px;
+  background:rgba(30,30,60,.8); color:var(--dim);
+  border:1px solid var(--border);
+  transition:all .3s;
+}
+.plat-cell.live .plat-badge {
+  background:color-mix(in srgb, var(--plat-col) 15%, transparent);
+  color:var(--plat-col);
+  border-color:color-mix(in srgb, var(--plat-col) 30%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--plat-col) 25%, transparent);
+}
+
+/* viewer count */
+.plat-viewers {
+  font-size:28px; font-weight:800; color:var(--dim);
+  font-family:var(--mono); line-height:1; letter-spacing:-1px;
+  transition:color .3s;
+}
+.plat-cell.live .plat-viewers { color:var(--text); }
+
+.plat-footer { margin-top:auto; }
+.plat-title {
+  font-size:11.5px; color:var(--dim); overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap;
+  transition:color .3s;
+}
+.plat-cell.live .plat-title { color:var(--muted); }
+.plat-uptime {
+  font-size:10px; color:var(--dim); font-family:var(--mono); margin-top:3px;
+  display:flex; align-items:center; gap:4px;
+}
+.plat-uptime::before {
+  content:''; width:5px; height:5px; border-radius:50%; background:var(--plat-col);
+  display:none; animation:pulse 2s infinite;
+}
+.plat-cell.live .plat-uptime::before { display:block; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.85)} }
+
+/* ═══════════════════════════════════════════
+   Music (bottom, cols 1-3)
+═══════════════════════════════════════════ */
+.music-cell {
+  grid-column:1/3; grid-row:4;
+  flex-direction:row; align-items:center; gap:12px;
+  padding:0 16px;
+  background:var(--wrap);
+  border-top:none;
+}
+.music-art {
+  width:64px; height:64px; flex-shrink:0; border-radius:var(--r2);
+  background:var(--card); display:flex; align-items:center; justify-content:center;
+  font-size:22px; color:var(--dim); overflow:hidden;
+  border:1px solid var(--border);
+}
+.music-art img { width:100%; height:100%; object-fit:cover; border-radius:var(--r2); }
+.music-info { flex:1; overflow:hidden; min-width:0; }
+.music-track  { font-size:13px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.music-artist { font-size:11px; color:var(--muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.music-meta { display:flex; align-items:center; gap:6px; margin-top:4px; }
+.music-dot { width:5px; height:5px; border-radius:50%; background:var(--cyan); flex-shrink:0; animation:pulse 2s infinite; }
+.music-player { font-size:10px; color:var(--dim); font-family:var(--mono); }
+.music-none { font-size:11px; color:var(--dim); }
+
+/* OBS info (right side of music bar) */
+.obs-info {
+  display:flex; align-items:center; gap:8px; flex-shrink:0;
+  padding-left:16px; border-left:1px solid var(--border);
+}
+.obs-info-label { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--dim); }
+.obs-scene-name { font-size:11px; color:var(--muted); font-family:var(--mono); max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ═══════════════════════════════════════════
+   Chat (right column, all rows)
+═══════════════════════════════════════════ */
+.chat-cell {
+  grid-row:1/4; grid-column:1;
+  background:var(--wrap);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+}
+.chat-hd {
+  height:36px; min-height:36px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 10px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.chat-hd-left { display:flex; align-items:center; gap:8px; }
+.chat-hd-title { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; }
+.chat-tabs { display:flex; gap:2px; }
+.ctab {
+  height:22px; padding:0 8px;
+  font-size:10px; font-weight:600;
+  cursor:pointer; border:1px solid transparent;
+  background:transparent; color:var(--dim);
+  transition:color .12s, background .12s; border-radius:var(--r1);
+  display:flex; align-items:center; gap:4px;
+}
+.ctab img { width:16px; height:16px; object-fit:contain; opacity:.6; }
+.ctab:hover { color:var(--muted); }
+.ctab.on { background:rgba(145,71,255,.12); color:var(--text); border-color:rgba(145,71,255,.2); }
+.ctab.on img { opacity:1; }
+
+.chat-msgs { flex:1; overflow-y:auto; padding:6px 8px; display:flex; flex-direction:column; gap:2px; }
+.chat-msgs::-webkit-scrollbar { width:3px; }
+.chat-msgs::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+.chat-empty-lbl { color:var(--dim); font-size:11px; margin:auto; text-align:center; }
+
+.msg { padding:5px 7px; border-radius:var(--r1); cursor:default; transition:background .08s; }
+.msg:hover { background:var(--card); }
+.msg-meta { display:flex; align-items:center; gap:5px; margin-bottom:2px; }
+.msg-plat {
+  width:20px; height:20px; border-radius:4px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.msg-plat.twitch  { background:rgba(145,71,255,.15); }
+.msg-plat.youtube { background:rgba(255,51,51,.12); }
+.msg-plat.kick    { background:rgba(83,252,24,.08); }
+.msg-plat img { width:13px; height:13px; object-fit:contain; }
+.msg-author { font-size:11.5px; font-weight:700; }
+.msg-text   { font-size:12px; color:var(--muted); line-height:1.5; word-break:break-word; }
+.chat-emote { width:20px; height:20px; vertical-align:middle; margin:0 1px; }
+
+.chat-ft {
+  height:28px; min-height:28px;
+  display:flex; align-items:center; padding:0 10px; gap:6px;
+  border-top:1px solid var(--border);
+  font-size:10px; color:var(--dim); font-family:var(--mono); flex-shrink:0;
+}
+.ws-led { width:5px; height:5px; border-radius:50%; background:var(--dim); flex-shrink:0; transition:background .3s; }
+.ws-led.on { background:var(--green); box-shadow:0 0 6px var(--green); }
+
+/* ═══════════════════════════════════════════
+   Titlebar extras
+═══════════════════════════════════════════ */
+.obs-chip {
+  display:flex; align-items:center; gap:5px;
+  font-size:10px; font-family:var(--mono); color:var(--dim);
+  padding:3px 8px; border:1px solid var(--border); border-radius:var(--r1);
+  background:var(--bg);
+}
+.total-viewers {
+  font-size:12px; font-weight:700; font-family:var(--mono);
+  color:var(--cyan); letter-spacing:-.3px;
+}
+</style>
+</head>
+<body>
+<script src="/static/nucleus-sidebar.js"></script>
+<div class="nk-page">
+  <div class="nk-titlebar">
+    <span class="nk-title">Dashboard</span>
+    <div class="nk-row" style="gap:8px">
+      <div class="obs-chip">
+        <div class="dot" id="obs-dot"></div>
+        <span style="font-weight:700;color:var(--muted)">OBS</span>
+        <span id="obs-scene" style="color:var(--muted)"></span>
+      </div>
+      <span class="total-viewers" id="dash-total" style="display:none"></span>
+      <button class="btn btn-ghost btn-sm" onclick="forceDetect()" title="Detectar agora" style="width:28px;padding:0;justify-content:center">↻</button>
+    </div>
+  </div>
+
+  <div class="dash-body">
+
+    <!-- Chat (left, spans all rows) -->
+    <div class="cell chat-cell">
+      <div class="chat-hd">
+        <div class="chat-hd-left">
+          <span class="chat-hd-title">Chat</span>
+          <div class="chat-tabs">
+            <button class="ctab on" onclick="setFilter('all',this)">ALL</button>
+            <button class="ctab"    onclick="setFilter('twitch',this)"><img src="/icones/twitch.png" alt="TW"></button>
+            <button class="ctab"    onclick="setFilter('youtube',this)"><img src="/icones/youtube.png" alt="YT"></button>
+            <button class="ctab"    onclick="setFilter('kick',this)"><img src="/icones/kick.png" alt="KI"></button>
+          </div>
+        </div>
+        <span id="chat-cnt" style="font-size:10px;color:var(--dim);font-family:var(--mono)">0</span>
+      </div>
+      <div class="chat-msgs" id="chat-msgs">
+        <div class="chat-empty-lbl" id="chat-empty">aguardando mensagens</div>
+      </div>
+      <div class="chat-ft">
+        <div class="ws-led" id="ws-led"></div>
+        <span id="ws-lbl">disconnected</span>
+      </div>
+    </div>
+
+    <!-- Twitch -->
+    <div class="cell plat-cell" data-p="twitch" id="pc-twitch">
+      <div>
+        <div class="plat-hd">
+          <div class="plat-name">
+            <div class="dot" id="dot-twitch"></div>
+            <img src="/icones/twitch.png" alt="" style="width:14px;height:14px;object-fit:contain">
+            Twitch
+          </div>
+          <span class="plat-badge" id="bdg-twitch">OFFLINE</span>
+        </div>
+        <div class="plat-viewers" id="vw-twitch">—</div>
+        <div style="font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:2px">viewers</div>
+      </div>
+      <div class="plat-footer">
+        <div class="plat-title"  id="tt-twitch">—</div>
+        <div class="plat-uptime" id="ut-twitch"></div>
+      </div>
+    </div>
+
+    <!-- YouTube -->
+    <div class="cell plat-cell" data-p="youtube" id="pc-youtube">
+      <div>
+        <div class="plat-hd">
+          <div class="plat-name">
+            <div class="dot" id="dot-youtube"></div>
+            <img src="/icones/youtube.png" alt="" style="width:14px;height:14px;object-fit:contain">
+            YouTube
+          </div>
+          <span class="plat-badge" id="bdg-youtube">OFFLINE</span>
+        </div>
+        <div class="plat-viewers" id="vw-youtube">—</div>
+        <div style="font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:2px">viewers</div>
+      </div>
+      <div class="plat-footer">
+        <div class="plat-title"  id="tt-youtube">—</div>
+        <div class="plat-uptime" id="ut-youtube"></div>
+      </div>
+    </div>
+
+    <!-- Kick -->
+    <div class="cell plat-cell" data-p="kick" id="pc-kick">
+      <div>
+        <div class="plat-hd">
+          <div class="plat-name">
+            <div class="dot" id="dot-kick"></div>
+            <img src="/icones/kick.png" alt="" style="width:14px;height:14px;object-fit:contain">
+            Kick
+          </div>
+          <span class="plat-badge" id="bdg-kick">OFFLINE</span>
+        </div>
+        <div class="plat-viewers" id="vw-kick">—</div>
+        <div style="font-size:10px;color:var(--dim);font-family:var(--mono);margin-top:2px">viewers</div>
+      </div>
+      <div class="plat-footer">
+        <div class="plat-title"  id="tt-kick">—</div>
+        <div class="plat-uptime" id="ut-kick"></div>
+      </div>
+    </div>
+
+    <!-- Music -->
+    <div class="cell music-cell">
+      <div class="music-art" id="mus-art">♪</div>
+      <div class="music-info">
+        <div id="mus-on" style="display:none">
+          <div class="music-track"  id="mus-title">—</div>
+          <div class="music-artist" id="mus-artist">—</div>
+          <div class="music-meta">
+            <div class="music-dot"></div>
+            <span class="music-player" id="mus-player">—</span>
+          </div>
+        </div>
+        <div class="music-none" id="mus-off">sem mídia detectada</div>
+      </div>
+      <div class="obs-info">
+        <div>
+          <div class="obs-info-label">OBS</div>
+          <div class="obs-scene-name" id="obs-scene-bottom">—</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dash-body -->
+</div><!-- /nk-page -->
+
+<script>
+NucleusAuth.guard();
+(function(){
+  function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+  function uptime(iso){
+    if(!iso)return"";
+    const s=Math.floor((Date.now()-new Date(iso))/1000);
+    const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);
+    return h>0?`${h}h ${m}m`:`${m}m`;
+  }
+
+  // ── Stream status ──────────────────────────────────────────────────────────
+  function applyStatus(s){
+    const pl=[
+      {id:"twitch", live:s.twitch_live,  v:s.twitch_viewers,  t:s.twitch_title,  u:s.twitch_live_since},
+      {id:"youtube",live:s.youtube_live, v:s.youtube_viewers, t:s.youtube_title, u:s.youtube_live_since},
+      {id:"kick",   live:s.kick_live,    v:s.kick_viewers,    t:s.kick_title,    u:s.kick_live_since},
+    ];
+    let total=0,any=false;
+    for(const p of pl){
+      const cell=document.getElementById("pc-"+p.id);
+      const dot =document.getElementById("dot-"+p.id);
+      const bdg =document.getElementById("bdg-"+p.id);
+      const vw  =document.getElementById("vw-"+p.id);
+      const tt  =document.getElementById("tt-"+p.id);
+      const ut  =document.getElementById("ut-"+p.id);
+      if(p.live){
+        any=true; total+=p.v||0;
+        cell.classList.add("live");
+        dot.classList.add("live");
+        bdg.textContent="LIVE";
+        vw.textContent=(p.v||0).toLocaleString();
+        tt.textContent=p.t||"";
+        ut.textContent=uptime(p.u);
+      } else {
+        cell.classList.remove("live");
+        dot.classList.remove("live");
+        bdg.textContent="OFFLINE";
+        vw.textContent="—"; tt.textContent="—"; ut.textContent="";
+      }
+    }
+    const tot=document.getElementById("dash-total");
+    if(any){ tot.style.display=""; tot.textContent=total.toLocaleString()+" viewers"; }
+    else tot.style.display="none";
+  }
+
+  (async function initStatus(){
+    try{const r=await fetch("/stream/status");if(r.ok)applyStatus(await r.json());}catch(_){}
+    function wsStatus(){
+      const ws=new WebSocket(`${location.protocol==="https:"?"wss":"ws"}://${location.host}/stream/ws/status`);
+      ws.onmessage=e=>{try{applyStatus(JSON.parse(e.data));}catch(_){}};
+      ws.onclose=()=>setTimeout(wsStatus,5000);
+    }
+    wsStatus();
+  })();
+
+  window.forceDetect=async()=>{
+    await fetch("/stream/detect-now",{method:"POST"});
+    NucleusToast("Detecção iniciada","info",1500);
+  };
+
+  // ── OBS ────────────────────────────────────────────────────────────────────
+  async function pollOBS(){
+    try{
+      const r=await fetch("/obs/status");if(!r.ok)return;
+      const d=await r.json();
+      document.getElementById("obs-dot").classList.toggle("live",d.connected);
+      const sc=d.connected&&d.current_scene?d.current_scene:"—";
+      document.getElementById("obs-scene").textContent=d.connected?("  "+sc):"";
+      document.getElementById("obs-scene-bottom").textContent=sc;
+    }catch(_){}
+  }
+  pollOBS();setInterval(pollOBS,15000);
+
+  // ── Music ──────────────────────────────────────────────────────────────────
+  async function pollMusic(){
+    try{
+      const r=await fetch("/music/current");if(!r.ok){noMusic();return;}
+      const d=await r.json();
+      if(!d.title){noMusic();return;}
+      document.getElementById("mus-on").style.display="";
+      document.getElementById("mus-off").style.display="none";
+      document.getElementById("mus-title").textContent=d.title||"—";
+      document.getElementById("mus-artist").textContent=d.artist||"—";
+      document.getElementById("mus-player").textContent=d.player||"—";
+      const art=document.getElementById("mus-art");
+      art.innerHTML=d.thumbnail?`<img src="${d.thumbnail}" alt="">`:"♪";
+    }catch(_){noMusic();}
+  }
+  function noMusic(){
+    document.getElementById("mus-on").style.display="none";
+    document.getElementById("mus-off").style.display="";
+    document.getElementById("mus-art").innerHTML="♪";
+  }
+  pollMusic();setInterval(pollMusic,4000);
+
+  // ── Chat ───────────────────────────────────────────────────────────────────
+  let _msgs=[],_filter="all",_cnt=0;
+  const MAX=200;
+  const platIco={
+    twitch: '<img src="/icones/twitch.png" style="width:9px;height:9px;object-fit:contain">',
+    youtube:'<img src="/icones/youtube.png" style="width:9px;height:9px;object-fit:contain">',
+    kick:   '<img src="/icones/kick.png"   style="width:9px;height:9px;object-fit:contain">',
+  };
+
+  window.setFilter=(f,btn)=>{
+    _filter=f;
+    document.querySelectorAll(".ctab").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+    rebuildChat();
+  };
+
+  function mkMsg(m){
+    // use message_html (already has <img> emotes from backend) or escape plain text
+    const body=m.message_html||esc(String(m.message||m.text||""));
+    const d=document.createElement("div");d.className="msg";
+    d.innerHTML=`<div class="msg-meta"><span class="msg-plat ${m.platform||""}">${platIco[m.platform]||""}</span><span class="msg-author" style="color:${m.color||"#a080e0"}">${esc(m.user||m.author||m.username||"?")}</span></div><div class="msg-text">${body}</div>`;
+    return d;
+  }
+
+  function rebuildChat(){
+    const c=document.getElementById("chat-msgs");
+    const e=document.getElementById("chat-empty");
+    while(c.children.length>1)c.removeChild(c.lastChild);
+    const vis=_filter==="all"?_msgs:_msgs.filter(m=>m.platform===_filter);
+    if(!vis.length){e.style.display="";return;}
+    e.style.display="none";
+    for(const m of vis)c.appendChild(mkMsg(m));
+    c.scrollTop=c.scrollHeight;
+  }
+
+  function pushMsg(m){
+    _msgs.push(m);_cnt++;
+    if(_msgs.length>MAX)_msgs.shift();
+    document.getElementById("chat-cnt").textContent=_cnt;
+    if(_filter!=="all"&&m.platform!==_filter)return;
+    const c=document.getElementById("chat-msgs");
+    const atBot=c.scrollHeight-c.scrollTop-c.clientHeight<80;
+    document.getElementById("chat-empty").style.display="none";
+    c.appendChild(mkMsg(m));
+    while(c.children.length>MAX+1)c.removeChild(c.children[1]);
+    if(atBot)c.scrollTop=c.scrollHeight;
+  }
+
+  (async function initChat(){
+    try{const r=await fetch("/chat/history");if(r.ok){_msgs=(await r.json()).slice(-MAX);rebuildChat();}}catch(_){}
+    function wsChat(){
+      const ws=new WebSocket(`${location.protocol==="https:"?"wss":"ws"}://${location.host}/ws/chat`);
+      const led=document.getElementById("ws-led"),lbl=document.getElementById("ws-lbl");
+      ws.onopen=()=>{led.classList.add("on");lbl.textContent="connected";};
+      ws.onmessage=e=>{try{pushMsg(JSON.parse(e.data));}catch(_){}};
+      ws.onclose=()=>{led.classList.remove("on");lbl.textContent="reconnecting...";setTimeout(wsChat,5000);};
+    }
+    wsChat();
+  })();
+})();
+</script>
+</body>
+</html>
